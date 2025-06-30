@@ -2,7 +2,13 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { Home, MessageCircle, Calendar, User, Sparkles } from 'lucide-react-native';
+import {
+  Home,
+  MessageCircle,
+  Calendar,
+  User,
+  Sparkles,
+} from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -47,8 +53,16 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Dashboard',
+          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
+        }}
+      />
+
+      <Tabs.Screen
+        name="services"
+        options={{
+          title: 'Services',
           tabBarIcon: ({ color, size }) => (
-            <Home size={size} color={color} />
+            <Sparkles size={size} color={color} />
           ),
         }}
       />
@@ -58,15 +72,6 @@ export default function TabLayout() {
           title: 'Chat',
           tabBarIcon: ({ color, size }) => (
             <MessageCircle size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="services"
-        options={{
-          title: 'Services',
-          tabBarIcon: ({ color, size }) => (
-            <Sparkles size={size} color={color} />
           ),
         }}
       />
@@ -83,9 +88,7 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <User size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
         }}
       />
     </Tabs>
