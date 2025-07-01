@@ -8,13 +8,47 @@ module.exports = {
   resolver: {
     ...config.resolver,
     extraNodeModules: {
-      url: path.resolve(__dirname, 'node_modules/url-polyfill'), // Ensure correct resolution
-    },
-    // Block the problematic url.js file more precisely
-    blockList: [
-      new RegExp(
-        `node_modules[/\\\\]socket\\.io-client[/\\\\]build[/\\\\]esm[/\\\\]url\\.js$`
+      url: path.resolve(__dirname, 'node_modules/url-polyfill/dist/index.js'),
+      'socket.io-client': path.resolve(
+        __dirname,
+        'node_modules/socket.io-client/dist/socket.io.js'
       ),
+    },
+    resolveRequest: (context, moduleName, platform) => {
+      if (moduleName === 'socket.io-client') {
+        console.log(
+          'Resolving socket.io-client to:',
+          path.resolve(
+            __dirname,
+            'node_modules/socket.io-client/dist/socket.io.js'
+          )
+        );
+        return {
+          filePath: path.resolve(
+            __dirname,
+            'node_modules/socket.io-client/dist/socket.io.js'
+          ),
+          type: 'sourceFile',
+        };
+      }
+      if (moduleName === 'url') {
+        console.log(
+          'Resolving url to:',
+          path.resolve(__dirname, 'node_modules/url-polyfill/dist/index.js')
+        );
+        return {
+          filePath: path.resolve(
+            __dirname,
+            'node_modules/url-polyfill/dist/index.js'
+          ),
+          type: 'sourceFile',
+        };
+      }
+      return context.resolveRequest(context, moduleName, platform);
+    },
+    blockList: [
+      // Block all ESM and CJS files in socket.io-client/build
+      new RegExp(`node_modules[/\\\\]socket\\.io-client[/\\\\]build[/\\\\].*`),
     ],
   },
   server: {
