@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Animated, TouchableWithoutFeedback } from 'react-native';
 import { BlurView } from 'expo-blur';
 import {
   Home,
@@ -11,6 +11,69 @@ import {
 } from 'lucide-react-native';
 
 export default function TabLayout() {
+  // Animation refs for each tab
+  const animatedValues = {
+    index: useRef(new Animated.Value(1)).current,
+    services: useRef(new Animated.Value(1)).current,
+    chat: useRef(new Animated.Value(1)).current,
+    schedule: useRef(new Animated.Value(1)).current,
+    profile: useRef(new Animated.Value(1)).current,
+  };
+
+  // Animation function for press-in effect
+  const handlePressIn = (key: keyof typeof animatedValues) => {
+    Animated.spring(animatedValues[key], {
+      toValue: 0.9,
+      friction: 3,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  // Animation function for press-out effect
+  const handlePressOut = (key: keyof typeof animatedValues) => {
+    Animated.spring(animatedValues[key], {
+      toValue: 1,
+      friction: 3,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  // Custom TabBarIcon component with animation
+  type AnimatedTabBarIconProps = {
+    name: keyof typeof animatedValues;
+    Icon: React.ComponentType<{ size: number; color: string }>;
+    color: string;
+    size: number;
+  };
+
+  const AnimatedTabBarIcon: React.FC<AnimatedTabBarIconProps> = ({
+    name,
+    Icon,
+    color,
+    size,
+  }) => {
+    return (
+      <TouchableWithoutFeedback
+        onPressIn={() => handlePressIn(name)}
+        onPressOut={() => handlePressOut(name)}
+      >
+        <Animated.View
+          style={{
+            transform: [{ scale: animatedValues[name] }],
+            opacity: animatedValues[name].interpolate({
+              inputRange: [0.9, 1],
+              outputRange: [0.8, 1],
+            }),
+          }}
+        >
+          <Icon size={size} color={color} />
+        </Animated.View>
+      </TouchableWithoutFeedback>
+    );
+  };
+
   return (
     <Tabs
       screenOptions={{
@@ -53,16 +116,27 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Dashboard',
-          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <AnimatedTabBarIcon
+              name="index"
+              Icon={Home}
+              color={color}
+              size={size}
+            />
+          ),
         }}
       />
-
       <Tabs.Screen
         name="services"
         options={{
           title: 'Services',
           tabBarIcon: ({ color, size }) => (
-            <Sparkles size={size} color={color} />
+            <AnimatedTabBarIcon
+              name="services"
+              Icon={Sparkles}
+              color={color}
+              size={size}
+            />
           ),
         }}
       />
@@ -71,7 +145,12 @@ export default function TabLayout() {
         options={{
           title: 'Chat',
           tabBarIcon: ({ color, size }) => (
-            <MessageCircle size={size} color={color} />
+            <AnimatedTabBarIcon
+              name="chat"
+              Icon={MessageCircle}
+              color={color}
+              size={size}
+            />
           ),
         }}
       />
@@ -80,7 +159,12 @@ export default function TabLayout() {
         options={{
           title: 'Schedule',
           tabBarIcon: ({ color, size }) => (
-            <Calendar size={size} color={color} />
+            <AnimatedTabBarIcon
+              name="schedule"
+              Icon={Calendar}
+              color={color}
+              size={size}
+            />
           ),
         }}
       />
@@ -88,7 +172,14 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <AnimatedTabBarIcon
+              name="profile"
+              Icon={User}
+              color={color}
+              size={size}
+            />
+          ),
         }}
       />
     </Tabs>
