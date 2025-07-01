@@ -41,10 +41,10 @@ const initialMessages: Message[] = [
 ];
 
 const quickSuggestions = [
-  "Plan a luxury weekend getaway",
-  "Find me a personal stylist",
-  "Book a fine dining experience",
-  "Organize my digital life",
+  'Plan a luxury weekend getaway',
+  'Find me a personal stylist',
+  'Book a fine dining experience',
+  'Organize my digital life',
 ];
 
 export default function ChatScreen() {
@@ -52,7 +52,7 @@ export default function ChatScreen() {
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
-  
+
   const sparkleRotation = useSharedValue(0);
   const typingOpacity = useSharedValue(0);
 
@@ -92,7 +92,7 @@ export default function ChatScreen() {
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInputText('');
     setIsTyping(true);
 
@@ -104,8 +104,8 @@ export default function ChatScreen() {
         sender: 'ai',
         timestamp: new Date(),
       };
-      
-      setMessages(prev => [...prev, aiResponse]);
+
+      setMessages((prev) => [...prev, aiResponse]);
       setIsTyping(false);
     }, 2000);
   };
@@ -114,10 +114,10 @@ export default function ChatScreen() {
     const responses = [
       "I'd be delighted to help you with that! Based on your profile, I can see you appreciate luxury experiences. Let me curate some exclusive options for you.",
       "Excellent choice! I've identified some premium opportunities that align with your sophisticated taste. Would you like me to proceed with the arrangements?",
-      "Perfect! I can leverage my connections to secure exclusive access and personalized service for you. Let me handle all the details.",
+      'Perfect! I can leverage my connections to secure exclusive access and personalized service for you. Let me handle all the details.',
       "Wonderful! I'll craft a bespoke experience that reflects your refined preferences. I'll take care of everything to ensure it exceeds your expectations.",
     ];
-    
+
     return responses[Math.floor(Math.random() * responses.length)];
   };
 
@@ -136,6 +136,7 @@ export default function ChatScreen() {
         <KeyboardAvoidingView
           style={styles.keyboardAvoidingView}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0} // Adjust offset for navigation bar
         >
           {/* Header */}
           <View style={styles.header}>
@@ -163,14 +164,18 @@ export default function ChatScreen() {
             style={styles.messagesContainer}
             contentContainerStyle={styles.messagesContent}
             showsVerticalScrollIndicator={false}
-            onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+            onContentSizeChange={() =>
+              scrollViewRef.current?.scrollToEnd({ animated: true })
+            }
           >
             {messages.map((message) => (
               <View
                 key={message.id}
                 style={[
                   styles.messageContainer,
-                  message.sender === 'user' ? styles.userMessage : styles.aiMessage,
+                  message.sender === 'user'
+                    ? styles.userMessage
+                    : styles.aiMessage,
                 ]}
               >
                 {message.sender === 'ai' && (
@@ -178,18 +183,22 @@ export default function ChatScreen() {
                     <Bot size={16} color="#0A0A0A" />
                   </View>
                 )}
-                
+
                 <BlurView
                   intensity={15}
                   style={[
                     styles.messageBlur,
-                    message.sender === 'user' ? styles.userMessageBlur : styles.aiMessageBlur,
+                    message.sender === 'user'
+                      ? styles.userMessageBlur
+                      : styles.aiMessageBlur,
                   ]}
                 >
                   <Text
                     style={[
                       styles.messageText,
-                      message.sender === 'user' ? styles.userMessageText : styles.aiMessageText,
+                      message.sender === 'user'
+                        ? styles.userMessageText
+                        : styles.aiMessageText,
                     ]}
                   >
                     {message.text}
@@ -206,7 +215,9 @@ export default function ChatScreen() {
 
             {/* Typing Indicator */}
             {isTyping && (
-              <Animated.View style={[styles.typingContainer, typingAnimatedStyle]}>
+              <Animated.View
+                style={[styles.typingContainer, typingAnimatedStyle]}
+              >
                 <View style={styles.messageAvatar}>
                   <Bot size={16} color="#0A0A0A" />
                 </View>
@@ -254,11 +265,17 @@ export default function ChatScreen() {
                 maxLength={500}
               />
               <TouchableOpacity
-                style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
+                style={[
+                  styles.sendButton,
+                  !inputText.trim() && styles.sendButtonDisabled,
+                ]}
                 onPress={() => sendMessage(inputText)}
                 disabled={!inputText.trim()}
               >
-                <Send size={20} color={inputText.trim() ? "#0A0A0A" : "#666666"} />
+                <Send
+                  size={20}
+                  color={inputText.trim() ? '#0A0A0A' : '#666666'}
+                />
               </TouchableOpacity>
             </BlurView>
           </View>
@@ -420,7 +437,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     paddingHorizontal: 24,
     paddingVertical: 16,
-    paddingBottom: 32,
+    paddingBottom: 80,
   },
   inputBlur: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
