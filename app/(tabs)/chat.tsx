@@ -22,7 +22,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Send, Bot, User, Sparkles } from 'lucide-react-native';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 interface Message {
   id: string;
@@ -38,9 +38,25 @@ const initialMessages: Message[] = [
     sender: 'ai',
     timestamp: new Date(),
   },
+  {
+    id: '2',
+    text: 'hi',
+    sender: 'user',
+    timestamp: new Date(),
+  },
+  {
+    id: '3',
+    text: 'Perfect! I can leverage my connections to secure exclusive access and personalized service for you. Let me handle all the details.',
+    sender: 'ai',
+    timestamp: new Date(),
+  },
 ];
 
 const quickSuggestions = [
+  'Plan a luxury weekend getaway',
+  'Find me a personal stylist',
+  'Book a fine dining experience',
+  'Organize my digital life',
   'Plan a luxury weekend getaway',
   'Find me a personal stylist',
   'Book a fine dining experience',
@@ -96,7 +112,6 @@ export default function ChatScreen() {
     setInputText('');
     setIsTyping(true);
 
-    // Simulate AI response
     setTimeout(() => {
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
@@ -191,6 +206,9 @@ export default function ChatScreen() {
                     message.sender === 'user'
                       ? styles.userMessageBlur
                       : styles.aiMessageBlur,
+                    message.sender === 'user'
+                      ? styles.userMessageBlur
+                      : styles.aiMessageBlur,
                   ]}
                 >
                   <Text
@@ -204,7 +222,6 @@ export default function ChatScreen() {
                     {message.text}
                   </Text>
                 </BlurView>
-
                 {message.sender === 'user' && (
                   <View style={styles.messageAvatar}>
                     <User size={16} color="#FFD700" />
@@ -213,7 +230,6 @@ export default function ChatScreen() {
               </View>
             ))}
 
-            {/* Typing Indicator */}
             {isTyping && (
               <Animated.View
                 style={[styles.typingContainer, typingAnimatedStyle]}
@@ -233,7 +249,7 @@ export default function ChatScreen() {
           </ScrollView>
 
           {/* Quick Suggestions */}
-          {messages.length === 1 && (
+          {messages.length <= 2 && (
             <View style={styles.suggestionsContainer}>
               <Text style={styles.suggestionsTitle}>Quick Suggestions</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -280,6 +296,25 @@ export default function ChatScreen() {
             </BlurView>
           </View>
         </KeyboardAvoidingView>
+
+        {/* Bottom Navigation (Static for reference) */}
+        <View style={styles.bottomNav}>
+          <TouchableOpacity style={styles.navItem}>
+            <Text style={styles.navText}>Dashboard</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navItem}>
+            <Text style={styles.navText}>Services</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navItem}>
+            <Text style={styles.navText}>Chat</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navItem}>
+            <Text style={styles.navText}>Schedule</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navItem}>
+            <Text style={styles.navText}>Profile</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     </View>
   );
@@ -304,8 +339,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 215, 0, 0.2)',
   },
@@ -328,24 +362,23 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontFamily: 'Inter-Bold',
+    fontWeight: 'bold',
     color: '#FFFFFF',
   },
   headerSubtitle: {
     fontSize: 14,
-    fontFamily: 'Inter-Regular',
     color: '#CCCCCC',
   },
   messagesContainer: {
     flex: 1,
+    padding: 16,
   },
   messagesContent: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingBottom: 16,
   },
   messageContainer: {
     flexDirection: 'row',
-    marginBottom: 16,
+    marginBottom: 12,
     alignItems: 'flex-end',
   },
   userMessage: {
@@ -355,17 +388,17 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   messageAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#FFD700',
     justifyContent: 'center',
     alignItems: 'center',
     marginHorizontal: 8,
   },
   messageBlur: {
-    maxWidth: width * 0.75,
-    borderRadius: 20,
+    maxWidth: width * 0.7,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   userMessageBlur: {
@@ -376,9 +409,8 @@ const styles = StyleSheet.create({
   },
   messageText: {
     fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    lineHeight: 24,
-    padding: 16,
+    lineHeight: 20,
+    padding: 12,
   },
   userMessageText: {
     color: '#0A0A0A',
@@ -389,49 +421,46 @@ const styles = StyleSheet.create({
   typingContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   typingBlur: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 20,
-    padding: 16,
+    borderRadius: 16,
+    padding: 12,
   },
   typingDots: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   typingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: '#FFD700',
     marginHorizontal: 2,
   },
   suggestionsContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   suggestionsTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-Medium',
+    fontSize: 14,
     color: '#FFFFFF',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   suggestionButton: {
-    marginRight: 12,
-    borderRadius: 16,
+    marginRight: 8,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   suggestionBlur: {
     backgroundColor: 'rgba(255, 215, 0, 0.1)',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    padding: 8,
     borderWidth: 1,
     borderColor: 'rgba(255, 215, 0, 0.3)',
   },
   suggestionText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
+    fontSize: 12,
     color: '#FFFFFF',
   },
   inputContainer: {
@@ -441,31 +470,50 @@ const styles = StyleSheet.create({
   },
   inputBlur: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 24,
+    borderRadius: 20,
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderWidth: 1,
     borderColor: 'rgba(255, 215, 0, 0.2)',
   },
   textInput: {
     flex: 1,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
+    fontSize: 14,
     color: '#FFFFFF',
-    maxHeight: 100,
-    marginRight: 12,
+    maxHeight: 80,
+    marginRight: 8,
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#FFD700',
     justifyContent: 'center',
     alignItems: 'center',
   },
   sendButtonDisabled: {
     backgroundColor: 'rgba(255, 215, 0, 0.3)',
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    height: 60,
+    backgroundColor: '#1A1A1A',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 215, 0, 0.2)',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  navItem: {
+    alignItems: 'center',
+  },
+  navText: {
+    color: '#CCCCCC',
+    fontSize: 12,
   },
 });
