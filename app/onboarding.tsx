@@ -24,27 +24,27 @@
 // const { width, height } = Dimensions.get('window');
 
 // const socialPlatforms = [
-//   { 
-//     name: 'Instagram', 
-//     icon: Instagram, 
+//   {
+//     name: 'Instagram',
+//     icon: Instagram,
 //     color: '#E4405F',
 //     description: 'Analyze your lifestyle preferences',
 //   },
-//   { 
-//     name: 'X (Twitter)', 
-//     icon: Twitter, 
+//   {
+//     name: 'X (Twitter)',
+//     icon: Twitter,
 //     color: '#1DA1F2',
 //     description: 'Understand your interests and network',
 //   },
-//   { 
-//     name: 'LinkedIn', 
-//     icon: Linkedin, 
+//   {
+//     name: 'LinkedIn',
+//     icon: Linkedin,
 //     color: '#0077B5',
 //     description: 'Professional insights and preferences',
 //   },
-//   { 
-//     name: 'Google', 
-//     icon: Star, 
+//   {
+//     name: 'Google',
+//     icon: Star,
 //     color: '#4285F4',
 //     description: 'Complete digital profile analysis',
 //   },
@@ -205,7 +205,7 @@
 //   return (
 //     <View style={styles.container}>
 //       <StatusBar style="light" />
-      
+
 //       {/* Background Gradient */}
 //       <LinearGradient
 //         colors={['#0A0A0A', '#1A1A1A', '#0A0A0A']}
@@ -232,7 +232,7 @@
 //             <Text style={styles.title}>Kai</Text>
 //             <Text style={styles.titleAccent}>Concierge</Text>
 //           </Animated.View>
-          
+
 //           <Animated.View style={subtitleAnimatedStyle}>
 //             <Text style={styles.subtitle}>
 //               Your personal AI assistant for luxury living
@@ -256,7 +256,7 @@
 //         {/* Social Login Options */}
 //         <Animated.View style={[styles.socialContainer, socialAnimatedStyle]}>
 //           <Text style={styles.socialTitle}>Choose your preferred platform</Text>
-          
+
 //           {socialPlatforms.map((platform, index) => (
 //             <TouchableOpacity
 //               key={platform.name}
@@ -510,7 +510,6 @@
 //   },
 // });
 
-
 import { useState, useEffect } from 'react';
 import {
   View,
@@ -518,7 +517,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
-  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -618,7 +616,8 @@ export default function OnboardingScreen() {
           } else {
             clearInterval(interval);
             setTimeout(async () => {
-              await AsyncStorage.setItem('hasCompletedOnboarding', 'true'); // Mark onboarding as complete
+              // Optional: Comment out or remove if not needed
+              // await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
               router.replace('/(tabs)');
             }, 1000);
             return prev;
@@ -661,14 +660,12 @@ export default function OnboardingScreen() {
     return (
       <View style={styles.container}>
         <StatusBar style="light" />
-
         <LinearGradient
           colors={['#0A0A0A', '#1A1A1A', '#0A0A0A']}
           style={styles.backgroundGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         />
-
         <View style={styles.analysisContainer}>
           <View style={styles.analysisContent}>
             <View style={styles.aiIconContainer}>
@@ -679,13 +676,11 @@ export default function OnboardingScreen() {
                 <Bot size={48} color="#0A0A0A" />
               </LinearGradient>
             </View>
-
             <Text style={styles.analysisTitle}>AI Profile Analysis</Text>
             <Text style={styles.analysisSubtitle}>
               Kai is analyzing your {selectedPlatform} profile to create your
               personalized experience
             </Text>
-
             <View style={styles.progressContainer}>
               <View style={styles.progressBar}>
                 <Animated.View
@@ -696,31 +691,9 @@ export default function OnboardingScreen() {
                 {Math.round((analysisStep / analysisSteps.length) * 100)}%
               </Text>
             </View>
-
             <Text style={styles.currentStep}>
               {analysisSteps[analysisStep]}
             </Text>
-
-            <View style={styles.analysisFeatures}>
-              <View style={styles.featureItem}>
-                <Sparkles size={16} color="#FFD700" />
-                <Text style={styles.featureText}>
-                  Learning your preferences
-                </Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Crown size={16} color="#FFD700" />
-                <Text style={styles.featureText}>
-                  Personalizing luxury services
-                </Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Star size={16} color="#FFD700" />
-                <Text style={styles.featureText}>
-                  Optimizing your experience
-                </Text>
-              </View>
-            </View>
           </View>
         </View>
       </View>
@@ -730,16 +703,12 @@ export default function OnboardingScreen() {
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-
-      {/* Background Gradient */}
       <LinearGradient
         colors={['#0A0A0A', '#1A1A1A', '#0A0A0A']}
         style={styles.backgroundGradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
-
-      {/* Floating Elements */}
       <Animated.View
         style={[
           styles.floatingElement,
@@ -767,15 +736,12 @@ export default function OnboardingScreen() {
       >
         <Crown size={18} color="#FFD700" />
       </Animated.View>
-
       <View style={styles.content}>
-        {/* Header */}
         <View style={styles.header}>
           <Animated.View style={[styles.titleContainer, titleAnimatedStyle]}>
             <Text style={styles.title}>Kai</Text>
             <Text style={styles.titleAccent}>Concierge</Text>
           </Animated.View>
-
           <Animated.View style={subtitleAnimatedStyle}>
             <Text style={styles.subtitle}>
               Your personal AI assistant for luxury living
@@ -786,21 +752,8 @@ export default function OnboardingScreen() {
             </Text>
           </Animated.View>
         </View>
-
-        {/* AI Icon */}
-        <View style={styles.aiIconContainer}>
-          <LinearGradient
-            colors={['#FFD700', '#FFA500', '#FFD700']}
-            style={styles.aiIconGradient}
-          >
-            <Bot size={40} color="#0A0A0A" />
-          </LinearGradient>
-        </View>
-
-        {/* Social Login Options */}
         <Animated.View style={[styles.socialContainer, socialAnimatedStyle]}>
           <Text style={styles.socialTitle}>Choose your preferred platform</Text>
-
           {socialPlatforms.map((platform, index) => (
             <TouchableOpacity
               key={platform.name}
@@ -832,30 +785,6 @@ export default function OnboardingScreen() {
             </TouchableOpacity>
           ))}
         </Animated.View>
-
-        {/* Features Preview */}
-        <View style={styles.featuresContainer}>
-          <Text style={styles.featuresTitle}>
-            What Kai will learn about you
-          </Text>
-          <View style={styles.featuresList}>
-            <Text style={styles.featureItem}>
-              ✨ Lifestyle preferences and interests
-            </Text>
-            <Text style={styles.featureItem}>
-              🏖️ Travel destinations and accommodation tastes
-            </Text>
-            <Text style={styles.featureItem}>
-              🛍️ Fashion style and shopping preferences
-            </Text>
-            <Text style={styles.featureItem}>
-              🍷 Dining habits and culinary interests
-            </Text>
-            <Text style={styles.featureItem}>
-              💼 Professional needs and networking
-            </Text>
-          </View>
-        </View>
       </View>
     </View>
   );
@@ -1014,7 +943,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: 'center',
   },
-  // Analysis Screen Styles
   analysisContainer: {
     flex: 1,
     justifyContent: 'center',

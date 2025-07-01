@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -20,7 +21,9 @@ import Animated, {
   withRepeat,
   withSequence,
 } from 'react-native-reanimated';
-import { Send, Bot, User, Sparkles } from 'lucide-react-native';
+import { Send, Bot, User } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import io from 'socket.io-client';
 
 const { width, height } = Dimensions.get('window');
 
@@ -34,19 +37,7 @@ interface Message {
 const initialMessages: Message[] = [
   {
     id: '1',
-    text: "Hello! I'm Kai, your personal AI concierge. I've analyzed your social media profiles and I'm ready to help you with luxury travel, personal shopping, and lifestyle management. What would you like to explore today?",
-    sender: 'ai',
-    timestamp: new Date(),
-  },
-  {
-    id: '2',
-    text: 'hi',
-    sender: 'user',
-    timestamp: new Date(),
-  },
-  {
-    id: '3',
-    text: 'Perfect! I can leverage my connections to secure exclusive access and personalized service for you. Let me handle all the details.',
+    text: "Hello! I'm Kai, your personal AI concierge. How can I assist you today?",
     sender: 'ai',
     timestamp: new Date(),
   },
@@ -64,9 +55,17 @@ export default function ChatScreen() {
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+  const socketRef = useRef<any>(null);
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [chatRoomJoined, setChatRoomJoined] = useState(false);
 
   const sparkleRotation = useSharedValue(0);
   const typingOpacity = useSharedValue(0);
+
+  const botId = '684006e942525d41443ba708';
+  const userId = '6840034f42525d41443ba548';
+  const userType = 'CUSTOMER';
+  const applicationUrl = 'https://uatapi.botwot.io';
 
   useEffect(() => {
     sparkleRotation.value = withRepeat(
@@ -86,13 +85,190 @@ export default function ChatScreen() {
     }
   }, [isTyping]);
 
-  const sparkleAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${sparkleRotation.value}deg` }],
-  }));
+  useEffect(() => {
+    connectSocket();
 
-  const typingAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: typingOpacity.value,
-  }));
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        setSocketConnected(false);
+      }
+    };
+  }, []);
+
+  const connectSocket = async () => {
+    if (
+      !socketConnected &&
+      (!socketRef.current || !socketRef.current.connected)
+    ) {
+      console.log('Connecting as CUSTOMER');
+      socketRef.current = io(applicationUrl, {
+        query: { isWidget: 'true', botId, userId, userType },
+        transports: ['websocket'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      });
+
+      socketRef.current.on('connect', () => {
+        console.log('Socket connected');
+        setSocketConnected(true);
+      });
+
+      socketRef.current.on('connect_error', (error: any) => {
+        console.error('Socket connection error:', error);
+        Alert.alert(
+          'Connection Error',
+          'Failed to connect to the server. Please check your internet connection and try again.'
+        );
+      });
+
+      socketRef.current.on(
+        'sessionCreated',
+        async (data: { sessionId: string }) => {
+          console.log('SessionId in widget', data.sessionId);
+          await AsyncStorage.setItem('sessionId', data.sessionId);
+          joinChatRoom();
+        }
+      );
+
+      socketRef.current.on('messageToClient', (data: any) => {
+        console.log('Data in widget', data);
+        if (data.sessionId) {
+          AsyncStorage.setItem('sessionId', data.sessionId);
+        }
+
+        if (data.messageType === 'text' && data.response) {
+          const aiMessage: Message = {
+            id: Date.now().toString(),
+            text: data.response,
+            sender: 'ai',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, aiMessage]);
+          setIsTyping(false);
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }
+      });
+
+      socketRef.current.on('handlerChanged', (data: { newHandler: string }) => {
+        const messageText =
+          data.newHandler === 'agent'
+            ? 'A support agent has joined the conversation.'
+            : 'Conversation is now handled by AI assistant.';
+        const aiMessage: Message = {
+          id: Date.now().toString(),
+          text: messageText,
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      });
+
+      socketRef.current.on(
+        'adminEndedSession',
+        (data: { message?: string }) => {
+          const messageText =
+            data.message ||
+            'This session has ended. Please start a new session to continue chatting.';
+          const aiMessage: Message = {
+            id: Date.now().toString(),
+            text: messageText,
+            sender: 'ai',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, aiMessage]);
+          setInputText('');
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+          const newSessionMessage: Message = {
+            id: Date.now().toString() + '-new-session',
+            text: 'Tap here to start a new session.',
+            sender: 'ai',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, newSessionMessage]);
+        }
+      );
+
+      socketRef.current.on('errorResponse', (message: string) => {
+        if (message.includes('session is already closed')) {
+          const aiMessage: Message = {
+            id: Date.now().toString(),
+            text: message,
+            sender: 'ai',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, aiMessage]);
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+          const newSessionMessage: Message = {
+            id: Date.now().toString() + '-new-session',
+            text: 'Tap here to start a new session.',
+            sender: 'ai',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, newSessionMessage]);
+        }
+      });
+    } else {
+      console.log('Socket already connected');
+    }
+  };
+
+  const joinChatRoom = async () => {
+    if (!chatRoomJoined) {
+      const sessionId = await AsyncStorage.getItem('sessionId');
+      if (sessionId && socketRef.current) {
+        socketRef.current.emit('joinSession', {
+          botId,
+          userId,
+          userType,
+          sessionId,
+        });
+        console.log(
+          'Joined room in widget',
+          userType,
+          botId,
+          userId,
+          sessionId
+        );
+        setChatRoomJoined(true);
+      } else {
+        console.log('Cannot join chat room: sessionId not available yet.');
+      }
+    }
+  };
+
+  const messageToServer = async (message: string, messageType = 'text') => {
+    const sessionId = await AsyncStorage.getItem('sessionId');
+    if (sessionId && socketRef.current && socketRef.current.connected) {
+      const payload = {
+        botId,
+        userId,
+        userType,
+        sessionId,
+        message,
+        messageType,
+      };
+      socketRef.current.emit('messageToServer', payload);
+      console.log('Sending to server:', payload);
+    } else {
+      Alert.alert('Error', 'Not connected to the server. Please try again.');
+      await startNewSession();
+    }
+  };
+
+  const startNewSession = async () => {
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      setSocketConnected(false);
+      setChatRoomJoined(false);
+    }
+    await AsyncStorage.removeItem('sessionId');
+    setMessages([...initialMessages]);
+    setInputText('');
+    connectSocket();
+  };
 
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
@@ -107,34 +283,29 @@ export default function ChatScreen() {
     setMessages((prev) => [...prev, userMessage]);
     setInputText('');
     setIsTyping(true);
+    scrollViewRef.current?.scrollToEnd({ animated: true });
 
-    setTimeout(() => {
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        text: generateAIResponse(text),
-        sender: 'ai',
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, aiResponse]);
-      setIsTyping(false);
-    }, 2000);
-  };
-
-  const generateAIResponse = (userText: string): string => {
-    const responses = [
-      "I'd be delighted to help you with that! Based on your profile, I can see you appreciate luxury experiences. Let me curate some exclusive options for you.",
-      "Excellent choice! I've identified some premium opportunities that align with your sophisticated taste. Would you like me to proceed with the arrangements?",
-      'Perfect! I can leverage my connections to secure exclusive access and personalized service for you. Let me handle all the details.',
-      "Wonderful! I'll craft a bespoke experience that reflects your refined preferences. I'll take care of everything to ensure it exceeds your expectations.",
-    ];
-
-    return responses[Math.floor(Math.random() * responses.length)];
+    await messageToServer(text);
   };
 
   const handleQuickSuggestion = (suggestion: string) => {
     sendMessage(suggestion);
   };
+
+  const handleMessagePress = (message: Message) => {
+    if (message.text === 'Tap here to start a new session.') {
+      startNewSession();
+    }
+  };
+
+  // Define animated styles
+  const sparkleAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${sparkleRotation.value}deg` }],
+  }));
+
+  const typingAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: typingOpacity.value,
+  }));
 
   return (
     <View style={styles.container}>
@@ -180,7 +351,7 @@ export default function ChatScreen() {
             }
           >
             {messages.map((message) => (
-              <View
+              <TouchableOpacity
                 key={message.id}
                 style={[
                   styles.messageContainer,
@@ -188,6 +359,7 @@ export default function ChatScreen() {
                     ? styles.userMessage
                     : styles.aiMessage,
                 ]}
+                onPress={() => handleMessagePress(message)}
               >
                 {message.sender === 'ai' && (
                   <View style={styles.messageAvatar}>
@@ -219,7 +391,7 @@ export default function ChatScreen() {
                     <User size={16} color="#FFD700" />
                   </View>
                 )}
-              </View>
+              </TouchableOpacity>
             ))}
 
             {isTyping && (
@@ -289,7 +461,7 @@ export default function ChatScreen() {
           </View>
         </KeyboardAvoidingView>
 
-        {/* Bottom Navigation (Static for reference) */}
+        {/* Bottom Navigation */}
         <View style={styles.bottomNav}>
           <TouchableOpacity style={styles.navItem}>
             <Text style={styles.navText}>Dashboard</Text>
@@ -405,7 +577,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   userMessageText: {
-    color: '#0A0A0A',
+    color: '#FFFFFF',
   },
   aiMessageText: {
     color: '#FFFFFF',
@@ -457,7 +629,7 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     padding: 16,
-    paddingBottom: 100, // Adjusted to account for bottom navigation
+    paddingBottom: 100,
   },
   inputBlur: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
