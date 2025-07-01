@@ -539,7 +539,7 @@ import {
   Twitter,
   Linkedin,
 } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useEffect, useState } from 'react';
 
 const { width, height } = Dimensions.get('window');
 
@@ -592,15 +592,13 @@ export default function OnboardingScreen() {
   const analysisProgress = useSharedValue(0);
 
   useEffect(() => {
-    titleScale.value = withDelay(300, withSpring(1, { damping: 15 }));
+    titleScale.value = withDelay(300, withSpring(1, { damping: 12 }));
     subtitleOpacity.value = withDelay(600, withSpring(1));
     socialButtonsOpacity.value = withDelay(900, withSpring(1));
     sparkleRotation.value = withRepeat(
-      withSequence(
-        withSpring(360, { duration: 4000 }),
-        withSpring(0, { duration: 4000 })
-      ),
-      -1
+      withSequence(withSpring(360, { duration: 5000 }), withSpring(0)),
+      -1,
+      true
     );
   }, []);
 
@@ -618,6 +616,7 @@ export default function OnboardingScreen() {
             setTimeout(async () => {
               // Optional: Comment out or remove if not needed
               // await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
+            setTimeout(() => {
               router.replace('/(tabs)');
             }, 1000);
             return prev;
@@ -673,7 +672,7 @@ export default function OnboardingScreen() {
                 colors={['#FFD700', '#FFA500', '#FFD700']}
                 style={styles.aiIconGradient}
               >
-                <Bot size={48} color="#0A0A0A" />
+                <Bot size={60} color="#0A0A0A" />
               </LinearGradient>
             </View>
             <Text style={styles.analysisTitle}>AI Profile Analysis</Text>
@@ -795,106 +794,119 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0A0A0A',
   },
+  contentWrapper: {
+    flex: 1,
+    position: 'relative',
+    zIndex: 2,
+  },
   backgroundGradient: {
     position: 'absolute',
     left: 0,
     right: 0,
     top: 0,
     bottom: 0,
+    zIndex: 0,
   },
   floatingElement: {
     position: 'absolute',
-    opacity: 0.6,
+    opacity: 0.7,
+    zIndex: 1,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 80,
+    paddingHorizontal: 20,
+    paddingTop: height * 0.1,
+    paddingBottom: 20,
     justifyContent: 'space-between',
+    zIndex: 3,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 30,
   },
   titleContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
+    alignItems: 'baseline',
+    marginBottom: 12,
   },
   title: {
-    fontSize: 48,
+    fontSize: 52,
     fontFamily: 'Playfair-Bold',
     color: '#FFFFFF',
-    marginRight: 8,
+    marginRight: 6,
   },
   titleAccent: {
-    fontSize: 48,
+    fontSize: 52,
     fontFamily: 'Playfair-Bold',
     color: '#FFD700',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: 'Inter-Regular',
-    color: '#CCCCCC',
+    color: '#DDDDDD',
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 12,
+    lineHeight: 26,
+    marginBottom: 8,
   },
   description: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#999999',
+    color: '#AAAAAA',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
   },
   aiIconContainer: {
     alignItems: 'center',
-    marginVertical: 40,
+    marginVertical: 30,
   },
   aiIconGradient: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#FFD700',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+    elevation: 12,
   },
   socialContainer: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   socialTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Medium',
+    fontSize: 20,
+    fontFamily: 'Inter-SemiBold',
     color: '#FFFFFF',
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
+  },
+  socialButtons: {
+    width: '100%',
+    maxWidth: 400,
   },
   socialButton: {
-    marginBottom: 16,
-    borderRadius: 16,
+    marginBottom: 20,
+    borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.2)',
+    borderColor: 'rgba(255, 215, 0, 0.3)',
   },
   socialButtonBlur: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    padding: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   socialIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 20,
   },
   socialTextContainer: {
     flex: 1,
@@ -903,7 +915,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-Medium',
     color: '#FFFFFF',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   socialDescription: {
     fontSize: 12,
@@ -912,26 +924,27 @@ const styles = StyleSheet.create({
   },
   securityBadge: {
     backgroundColor: 'rgba(76, 175, 80, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(76, 175, 80, 0.4)',
+    borderColor: 'rgba(76, 175, 80, 0.5)',
   },
   securityText: {
-    fontSize: 10,
+    fontSize: 12,
     fontFamily: 'Inter-Medium',
     color: '#4CAF50',
   },
   featuresContainer: {
     marginBottom: 40,
+    paddingHorizontal: 10,
   },
   featuresTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: 'Inter-SemiBold',
     color: '#FFD700',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   featuresList: {
     alignItems: 'center',
@@ -940,54 +953,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#CCCCCC',
-    marginBottom: 8,
+    marginBottom: 10,
     textAlign: 'center',
+    paddingHorizontal: 10,
   },
   analysisContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
+    zIndex: 3,
   },
   analysisContent: {
     alignItems: 'center',
-    width: '100%',
+    width: '90%',
+    maxWidth: 400,
   },
   analysisTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontFamily: 'Playfair-Bold',
     color: '#FFFFFF',
-    marginTop: 24,
-    marginBottom: 8,
+    marginTop: 30,
+    marginBottom: 12,
   },
   analysisSubtitle: {
     fontSize: 16,
     fontFamily: 'Inter-Regular',
-    color: '#CCCCCC',
+    color: '#DDDDDD',
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 40,
+    marginBottom: 30,
   },
   progressContainer: {
     width: '100%',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   progressBar: {
     width: '100%',
-    height: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 3,
+    height: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 4,
     overflow: 'hidden',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   progressFill: {
     height: '100%',
     backgroundColor: '#FFD700',
-    borderRadius: 3,
+    borderRadius: 4,
   },
   progressText: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: 'Inter-Medium',
     color: '#FFD700',
   },
@@ -996,16 +1012,19 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     color: '#FFFFFF',
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: 30,
   },
   analysisFeatures: {
     alignItems: 'center',
+    marginTop: 20,
+  },
+  featureIcon: {
+    marginRight: 10,
   },
   featureText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#CCCCCC',
-    marginLeft: 8,
-    textAlign: 'left',
   },
 });
+

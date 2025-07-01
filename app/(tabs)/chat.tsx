@@ -48,6 +48,10 @@ const quickSuggestions = [
   'Find me a personal stylist',
   'Book a fine dining experience',
   'Organize my digital life',
+  'Plan a luxury weekend getaway',
+  'Find me a personal stylist',
+  'Book a fine dining experience',
+  'Organize my digital life',
 ];
 
 export default function ChatScreen() {
@@ -318,7 +322,7 @@ export default function ChatScreen() {
         <KeyboardAvoidingView
           style={styles.keyboardAvoidingView}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 60}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0} // Adjust offset for navigation bar
         >
           {/* Header */}
           <View style={styles.header}>
@@ -366,10 +370,14 @@ export default function ChatScreen() {
                     <Bot size={16} color="#0A0A0A" />
                   </View>
                 )}
+
                 <BlurView
                   intensity={15}
                   style={[
                     styles.messageBlur,
+                    message.sender === 'user'
+                      ? styles.userMessageBlur
+                      : styles.aiMessageBlur,
                     message.sender === 'user'
                       ? styles.userMessageBlur
                       : styles.aiMessageBlur,
