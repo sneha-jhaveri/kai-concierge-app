@@ -1,3 +1,6 @@
 [build]
   command = "npx expo start -c && npx expo export -p web"
   publish = "dist"
+
+[build.environment]
+  CI = "false"
