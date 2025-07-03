@@ -652,37 +652,42 @@ export default function PersonaStoryboardScreen() {
             id: 1,
             title: 'Your Demographics',
             content: parsed.demographics,
-            image: 'https://images.pexels.com/photos/1040881/pexels-photo-1040881.jpeg',
+            image:
+              'https://images.pexels.com/photos/1040881/pexels-photo-1040881.jpeg',
             icon: User,
           },
           {
             id: 2,
             title: 'Personality Profile',
             content: parsed.personality,
-            image: 'https://images.pexels.com/photos/1181690/pexels-photo-1181690.jpeg',
+            image:
+              'https://images.pexels.com/photos/1181690/pexels-photo-1181690.jpeg',
             icon: Heart,
           },
           {
             id: 3,
             title: 'Interests & Hobbies',
             content: parsed.interests,
-            image: 'https://images.pexels.com/photos/1181467/pexels-photo-1181467.jpeg',
+            image:
+              'https://images.pexels.com/photos/1181467/pexels-photo-1181467.jpeg',
             icon: Star,
           },
           {
             id: 4,
             title: 'Shopping Preferences',
             content: parsed.shopping,
-            image: 'https://images.pexels.com/photos/1536619/pexels-photo-1536619.jpeg',
+            image:
+              'https://images.pexels.com/photos/1536619/pexels-photo-1536619.jpeg',
             icon: ShoppingBag,
           },
           {
             id: 5,
             title: 'Recommendations',
             content: parsed.recommendations,
-            image: 'https://images.pexels.com/photos/3184338/pexels-photo-3184338.jpeg',
+            image:
+              'https://images.pexels.com/photos/3184338/pexels-photo-3184338.jpeg',
             icon: Target,
-          }
+          },
         ]);
       }
     };
@@ -715,7 +720,10 @@ export default function PersonaStoryboardScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#0A0A0A', '#1A1A1A']} style={styles.background} />
+      <LinearGradient
+        colors={['#0A0A0A', '#1A1A1A']}
+        style={styles.background}
+      />
       <SafeAreaView style={{ flex: 1 }}>
         <View style={styles.progressBar}>
           <Animated.View style={[styles.progressFill, progressAnimatedStyle]} />
@@ -734,15 +742,21 @@ export default function PersonaStoryboardScreen() {
           </Animated.View>
         </ScrollView>
 
-        <TouchableOpacity style={styles.button} onPress={() => {
-          if (currentSlide < slides.length - 1) setCurrentSlide(currentSlide + 1);
-          else {
-            setIsComplete(true);
-            router.replace('/(tabs)/chat');
-          }
-        }}>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => {
+            if (currentSlide < slides.length - 1)
+              setCurrentSlide(currentSlide + 1);
+            else {
+              setIsComplete(true);
+              router.replace('/(tabs)/chat');
+            }
+          }}
+        >
           <Text style={styles.buttonText}>
-            {currentSlide === slides.length - 1 ? 'Start Experience' : 'Continue'}
+            {currentSlide === slides.length - 1
+              ? 'Start Experience'
+              : 'Continue'}
           </Text>
           <ArrowRight size={20} color="#0A0A0A" />
         </TouchableOpacity>
@@ -755,7 +769,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0A0A0A' },
   background: {
     position: 'absolute',
-    left: 0, right: 0, top: 0, bottom: 0,
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
   },
   progressBar: {
     height: 4,
@@ -816,4 +833,3 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
 });
-
