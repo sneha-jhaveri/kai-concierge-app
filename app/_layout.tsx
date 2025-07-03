@@ -38,12 +38,15 @@
 //   }, [fontsLoaded, fontError]);
 
 //   if (!fontsLoaded && !fontError) {
-//     return null;
+//     return null; // Wait until fonts are loaded
 //   }
 
 //   return (
 //     <>
-//       <Stack screenOptions={{ headerShown: false }}>
+//       <Stack
+//         screenOptions={{ headerShown: false }}
+//         initialRouteName="onboarding"
+//       >
 //         <Stack.Screen name="onboarding" />
 //         <Stack.Screen name="(tabs)" />
 //         <Stack.Screen name="+not-found" />
@@ -53,9 +56,11 @@
 //   );
 // }
 
-import { useEffect } from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
@@ -86,21 +91,31 @@ export default function RootLayout() {
     'Playfair-Bold': PlayfairDisplay_700Bold,
   });
 
+  const [initialRoute, setInitialRoute] = useState<string | null>(null);
+
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    const prepareApp = async () => {
+      const hasCompleted = await AsyncStorage.getItem('hasCompletedOnboarding');
+      setInitialRoute(hasCompleted === 'true' ? '(tabs)' : 'onboarding');
+    };
+    prepareApp();
+  }, []);
+
+  useEffect(() => {
+    if ((fontsLoaded || fontError) && initialRoute) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, initialRoute]);
 
-  if (!fontsLoaded && !fontError) {
-    return null; // Wait until fonts are loaded
+  if (!fontsLoaded || !initialRoute) {
+    return null; // show splash until ready
   }
 
   return (
     <>
       <Stack
         screenOptions={{ headerShown: false }}
-        initialRouteName="onboarding"
+        initialRouteName={initialRoute}
       >
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(tabs)" />
