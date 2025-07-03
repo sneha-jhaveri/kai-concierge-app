@@ -20,23 +20,51 @@ export default function PersonaResultScreen() {
 
   useEffect(() => {
     const fetchSummary = async () => {
-      if (params.summary) {
-        const parsed = JSON.parse(params.summary as string);
-        setSummary(parsed);
-        const storedAnalysis = await AsyncStorage.getItem(
-          'personaFullAnalysis'
-        );
-        if (storedAnalysis) setFullAnalysis(storedAnalysis);
-      } else {
-        const stored = await AsyncStorage.getItem('personaSummary');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          setSummary(parsed);
+      try {
+        let parsedSummary: PersonaSummary | null = null;
+
+        if (params.summary) {
+          parsedSummary = JSON.parse(params.summary as string);
+        } else {
+          const stored = await AsyncStorage.getItem('personaSummary');
+          if (stored) parsedSummary = JSON.parse(stored);
         }
+
+        const defaultSummary: PersonaSummary = {
+          key_insights: [],
+          demographics: '',
+          personality: '',
+          interests: '',
+          shopping: '',
+          recommendations: '',
+          total_sections: (parsedSummary && typeof parsedSummary.total_sections === 'number')
+            ? parsedSummary.total_sections
+            : 0,
+          ...(parsedSummary
+            ? Object.fromEntries(
+                Object.entries(parsedSummary).filter(([key]) => key !== 'total_sections')
+              )
+            : {}),
+        };
+
+        setSummary(defaultSummary);
+
         const analysis = await AsyncStorage.getItem('personaFullAnalysis');
         if (analysis) setFullAnalysis(analysis);
+      } catch (error) {
+        console.error('Error parsing summary:', error);
+        setSummary({
+          key_insights: [],
+          demographics: '',
+          personality: '',
+          interests: '',
+          shopping: '',
+          recommendations: '',
+          total_sections: 0,
+        });
       }
     };
+
     fetchSummary();
 
     Animated.timing(fadeAnim, {
@@ -60,26 +88,31 @@ export default function PersonaResultScreen() {
       <Text style={styles.title}>Your AI Persona Summary</Text>
 
       <Text style={styles.sectionTitle}>Key Insights</Text>
-      {summary.key_insights.map((insight, index) => (
-        <Text key={index} style={styles.itemText}>
-          • {insight}
-        </Text>
-      ))}
+      {Array.isArray(summary.key_insights) &&
+      summary.key_insights.length > 0 ? (
+        summary.key_insights.map((insight, index) => (
+          <Text key={index} style={styles.itemText}>
+            • {insight}
+          </Text>
+        ))
+      ) : (
+        <Text style={styles.itemText}>No key insights available.</Text>
+      )}
 
       <Text style={styles.sectionTitle}>Demographics</Text>
-      <Text style={styles.itemText}>{summary.demographics}</Text>
+      <Text style={styles.itemText}>{summary.demographics || 'N/A'}</Text>
 
       <Text style={styles.sectionTitle}>Personality</Text>
-      <Text style={styles.itemText}>{summary.personality}</Text>
+      <Text style={styles.itemText}>{summary.personality || 'N/A'}</Text>
 
       <Text style={styles.sectionTitle}>Interests</Text>
-      <Text style={styles.itemText}>{summary.interests}</Text>
+      <Text style={styles.itemText}>{summary.interests || 'N/A'}</Text>
 
       <Text style={styles.sectionTitle}>Shopping Behavior</Text>
-      <Text style={styles.itemText}>{summary.shopping}</Text>
+      <Text style={styles.itemText}>{summary.shopping || 'N/A'}</Text>
 
       <Text style={styles.sectionTitle}>Recommendations</Text>
-      <Text style={styles.itemText}>{summary.recommendations}</Text>
+      <Text style={styles.itemText}>{summary.recommendations || 'N/A'}</Text>
 
       {fullAnalysis ? (
         <View style={{ marginTop: 30 }}>
@@ -90,6 +123,7 @@ export default function PersonaResultScreen() {
     </Animated.ScrollView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
