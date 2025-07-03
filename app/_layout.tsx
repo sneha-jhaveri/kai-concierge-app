@@ -118,6 +118,7 @@ export default function RootLayout() {
         initialRouteName={initialRoute}
       >
         <Stack.Screen name="onboarding" />
+        <Stack.Screen name="persona-storyboard" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="+not-found" />
       </Stack>
