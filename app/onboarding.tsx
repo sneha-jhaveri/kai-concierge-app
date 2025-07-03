@@ -305,10 +305,7 @@ export default function OnboardingScreen() {
     subtitleOpacity.value = withDelay(600, withSpring(1));
     socialButtonsOpacity.value = withDelay(900, withSpring(1));
     sparkleRotation.value = withRepeat(
-      withSequence(
-        withSpring(360, { duration: 4000 }),
-        withSpring(0, { duration: 4000 })
-      ),
+      withSequence(withSpring(360), withSpring(0)),
       -1
     );
   }, []);
@@ -362,8 +359,7 @@ export default function OnboardingScreen() {
 
       // Navigate to persona storyboard
       setTimeout(() => {
-        return router.replace('/persona-storyboard');
-        
+        return router.replace('/persona-storyboard' as any);
       }, 1000);
     } catch (err) {
       setError('Failed to generate persona. Please try again.');
