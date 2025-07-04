@@ -119,7 +119,7 @@ export default function OnboardingScreen() {
       // Store the persona data
       await AsyncStorage.setItem(
         'personaSummary',
-        JSON.stringify(result.summary)
+        JSON.stringify(result)
       );
       await AsyncStorage.setItem('personaFullAnalysis', result.full_analysis);
       // await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
