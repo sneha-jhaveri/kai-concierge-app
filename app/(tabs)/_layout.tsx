@@ -186,7 +186,6 @@
 //   );
 // }
 
-
 import React, { useRef } from 'react';
 import { Tabs } from 'expo-router';
 import {
@@ -353,7 +352,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="schedule"
         options={{
-          title: 'Schedule',
+          title: 'Plan',
           tabBarIcon: ({ color, size }) => (
             <AnimatedTabBarIcon
               name="schedule"

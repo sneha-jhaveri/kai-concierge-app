@@ -178,7 +178,7 @@ export default function ScheduleScreen() {
         <Animated.View style={[styles.header, headerAnimatedStyle]}>
           <View style={styles.headerTop}>
             <View style={styles.titleContainer}>
-              <Text style={styles.title}>My Schedule</Text>
+              <Text style={styles.title}>My Plan</Text>
               <Animated.View style={sparkleAnimatedStyle}>
                 <Calendar size={24} color="#FFD700" />
               </Animated.View>
