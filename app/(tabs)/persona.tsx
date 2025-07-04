@@ -325,10 +325,10 @@ export default function PersonaResultScreen() {
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Persona Summary</Text>
         <Text style={styles.itemText}>
-          👥 Followers: {summary.summary.followers.toLocaleString()}
+          👥 Followers: {summary.summary.followers?.toLocaleString?.() ?? 'N/A'}
         </Text>
         <Text style={styles.itemText}>
-          📈 Posts Count: {summary.summary.posts_count}
+          📈 Posts Count: {summary.summary.posts_count ?? 'N/A'}
         </Text>
         <Text style={styles.itemText}>
           📊 Avg. Engagement:{' '}
