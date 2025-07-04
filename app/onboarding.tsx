@@ -65,7 +65,33 @@ export default function OnboardingScreen() {
   const subtitleOpacity = useSharedValue(0);
   const socialButtonsOpacity = useSharedValue(0);
   const sparkleRotation = useSharedValue(0);
-  const progress = useSharedValue(0);
+
+  const dot1 = useSharedValue(0);
+  const dot2 = useSharedValue(0);
+  const dot3 = useSharedValue(0);
+
+  const titleAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: titleScale.value }],
+  }));
+  const subtitleAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: subtitleOpacity.value,
+  }));
+  const socialAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: socialButtonsOpacity.value,
+  }));
+  const sparkleAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${sparkleRotation.value}deg` }],
+  }));
+
+  const dot1Style = useAnimatedStyle(() => ({
+    transform: [{ translateY: dot1.value }],
+  }));
+  const dot2Style = useAnimatedStyle(() => ({
+    transform: [{ translateY: dot2.value }],
+  }));
+  const dot3Style = useAnimatedStyle(() => ({
+    transform: [{ translateY: dot3.value }],
+  }));
 
   useEffect(() => {
     titleScale.value = withDelay(300, withSpring(1, { damping: 15 }));
@@ -77,25 +103,27 @@ export default function OnboardingScreen() {
     );
   }, []);
 
-  const titleAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: titleScale.value }],
-  }));
+  useEffect(() => {
+    if (isAnalyzing) {
+      const bounce = (dot: any, delay: number) => {
+        dot.value = withDelay(
+          delay,
+          withRepeat(
+            withSequence(
+              withSpring(-10, { damping: 6 }),
+              withSpring(0, { damping: 6 })
+            ),
+            -1,
+            false
+          )
+        );
+      };
 
-  const subtitleAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: subtitleOpacity.value,
-  }));
-
-  const socialAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: socialButtonsOpacity.value,
-  }));
-
-  const sparkleAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${sparkleRotation.value}deg` }],
-  }));
-
-  const progressAnimatedStyle = useAnimatedStyle(() => ({
-    width: `${progress.value * 100}%`,
-  }));
+      bounce(dot1, 0);
+      bounce(dot2, 200);
+      bounce(dot3, 400);
+    }
+  }, [isAnalyzing]);
 
   const handleSocialLogin = async (platform: string) => {
     if (!username.trim()) {
@@ -106,7 +134,6 @@ export default function OnboardingScreen() {
     setSelectedPlatform(platform);
     setIsAnalyzing(true);
     setError('');
-    progress.value = withSpring(0.3);
 
     try {
       const result = await generatePersona(
@@ -114,24 +141,13 @@ export default function OnboardingScreen() {
         username.trim()
       );
 
-      progress.value = withSpring(1);
-
-      // Store the persona data
-      await AsyncStorage.setItem(
-        'personaSummary',
-        JSON.stringify(result)
-      );
+      await AsyncStorage.setItem('personaSummary', JSON.stringify(result));
       await AsyncStorage.setItem('personaFullAnalysis', result.full_analysis);
-      // await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
 
-      // Navigate to persona storyboard
-      setTimeout(() => {
-        return router.replace('/persona-storyboard' as any);
-      }, 1000);
+      setTimeout(() => router.replace('/persona-storyboard' as any), 1000);
     } catch (err) {
       setError('Failed to generate persona. Please try again.');
       setIsAnalyzing(false);
-      progress.value = withSpring(0);
     }
   };
 
@@ -189,16 +205,14 @@ export default function OnboardingScreen() {
               Kai is analyzing your {selectedPlatform} profile to create your
               personalized experience
             </Text>
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
-                <Animated.View
-                  style={[styles.progressFill, progressAnimatedStyle]}
-                />
-              </View>
-              <Text style={styles.progressText}>
-                {Math.round(progress.value * 100)}%
-              </Text>
+
+            {/* Bouncing Dots Loader */}
+            <View style={styles.loaderDots}>
+              <Animated.View style={[styles.dot, dot1Style]} />
+              <Animated.View style={[styles.dot, dot2Style]} />
+              <Animated.View style={[styles.dot, dot3Style]} />
             </View>
+
             <Text style={styles.currentStep}>
               Creating your luxury lifestyle profile...
             </Text>
@@ -515,28 +529,18 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: 40,
   },
-  progressContainer: {
-    width: '100%',
-    alignItems: 'center',
+  loaderDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'flex-end',
     marginBottom: 24,
+    gap: 12,
   },
-  progressBar: {
-    width: '100%',
-    height: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  progressFill: {
-    height: '100%',
+  dot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: '#FFD700',
-    borderRadius: 3,
-  },
-  progressText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: '#FFD700',
   },
   currentStep: {
     fontSize: 16,
