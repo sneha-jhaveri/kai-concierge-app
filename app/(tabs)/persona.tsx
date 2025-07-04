@@ -253,7 +253,6 @@
 //   list_item: { marginBottom: 6 },
 // };
 
-
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -323,6 +322,41 @@ export default function PersonaResultScreen() {
     >
       <Text style={styles.header}>Persona Overview</Text>
 
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Persona Summary</Text>
+        <Text style={styles.itemText}>
+          👥 Followers: {summary.summary.followers.toLocaleString()}
+        </Text>
+        <Text style={styles.itemText}>
+          📈 Posts Count: {summary.summary.posts_count}
+        </Text>
+        <Text style={styles.itemText}>
+          📊 Avg. Engagement:{' '}
+          {(summary.summary.average_engagement * 100).toFixed(2)}%
+        </Text>
+        <Text style={styles.itemText}>
+          🔥 Primary Interest: {summary.summary.primary_interest}
+        </Text>
+        <Text style={styles.itemText}>
+          ⏰ Posting Frequency: {summary.summary.posting_frequency}
+        </Text>
+        <Text style={styles.itemText}>
+          🌍 Demographics: {summary.summary.demographics}
+        </Text>
+        <Text style={styles.itemText}>
+          💡 Personality: {summary.summary.personality}
+        </Text>
+        <Text style={styles.itemText}>
+          🎯 Interests: {summary.summary.interests}
+        </Text>
+        <Text style={styles.itemText}>
+          🛍️ Shopping Behavior: {summary.summary.shopping}
+        </Text>
+        <Text style={styles.itemText}>
+          🤝 Recommendations: {summary.summary.recommendations}
+        </Text>
+      </View>
+
       {/* Summary Card */}
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Key Insights</Text>
@@ -388,7 +422,10 @@ export default function PersonaResultScreen() {
               height={220}
               chartConfig={chartConfig}
               verticalLabelRotation={30}
-              fromZero yAxisLabel={''} yAxisSuffix={''}            />
+              fromZero
+              yAxisLabel={''}
+              yAxisSuffix={''}
+            />
           </ChartBlock>
 
           <ChartBlock title="Content Types">
@@ -413,7 +450,10 @@ export default function PersonaResultScreen() {
               height={220}
               chartConfig={chartConfig}
               verticalLabelRotation={30}
-              fromZero yAxisLabel={''} yAxisSuffix={''}            />
+              fromZero
+              yAxisLabel={''}
+              yAxisSuffix={''}
+            />
           </ChartBlock>
 
           <ChartBlock title="Shopping Behavior">
@@ -423,7 +463,10 @@ export default function PersonaResultScreen() {
               height={220}
               chartConfig={chartConfig}
               verticalLabelRotation={30}
-              fromZero yAxisLabel={''} yAxisSuffix={''}            />
+              fromZero
+              yAxisLabel={''}
+              yAxisSuffix={''}
+            />
           </ChartBlock>
         </View>
       )}
