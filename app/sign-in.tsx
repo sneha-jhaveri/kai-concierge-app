@@ -159,8 +159,10 @@ const SignInScreen = () => {
         title="Sign in with Google"
         disabled={!request}
         onPress={() => {
-          console.log('🔁 Redirecting to Google login...');
-          promptAsync(); // ✅ CORRECT placement
+          console.log('🔁 Triggering promptAsync()');
+          promptAsync()
+            .then((res) => console.log('🔁 promptAsync result:', res))
+            .catch((err) => console.error('❌ promptAsync error:', err));
         }}
       />
     </View>
