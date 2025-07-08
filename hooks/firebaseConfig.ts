@@ -1,18 +1,27 @@
-// firebaseConfig.ts
+import Constants from 'expo-constants';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 
+const {
+  FIREBASE_API_KEY,
+  FIREBASE_AUTH_DOMAIN,
+  FIREBASE_PROJECT_ID,
+  FIREBASE_STORAGE_BUCKET,
+  FIREBASE_MESSAGING_SENDER_ID,
+  FIREBASE_APP_ID,
+  FIREBASE_MEASUREMENT_ID,
+} = Constants.expoConfig?.extra || {};
+
 const firebaseConfig = {
-  apiKey: 'AIzaSyAlWu5-bcN5B6RvCxVrRv4q-IVZorZWGd0',
-  authDomain: 'kai-db-b661d.firebaseapp.com',
-  projectId: 'kai-db-b661d',
-  storageBucket: 'kai-db-b661d.firebasestorage.app',
-  messagingSenderId: '1050715964408',
-  appId: '1:1050715964408:web:fff5d338659b4b41804c0d',
-  measurementId: 'G-T1ZFHWS82Y',
+  apiKey: FIREBASE_API_KEY,
+  authDomain: FIREBASE_AUTH_DOMAIN,
+  projectId: FIREBASE_PROJECT_ID,
+  storageBucket: FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: FIREBASE_MESSAGING_SENDER_ID,
+  appId: FIREBASE_APP_ID,
+  measurementId: FIREBASE_MEASUREMENT_ID,
 };
 
-// 🛡️ Prevent reinitialization
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 export const auth = getAuth(app);
