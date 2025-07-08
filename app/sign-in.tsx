@@ -3,7 +3,11 @@ import { View, Button, StyleSheet, Text, Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import * as AuthSession from 'expo-auth-session';
-import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import {
+  GoogleAuthProvider,
+  signInWithCredential,
+  onAuthStateChanged,
+} from 'firebase/auth';
 import { auth } from '../hooks/firebaseConfig';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
@@ -15,9 +19,12 @@ const SignInScreen = () => {
 
   // Redirect if already signed in (for web reload after OAuth)
   useEffect(() => {
-    if (auth.currentUser) {
-      router.replace('/onboarding');
-    }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        router.replace('/onboarding');
+      }
+    });
+    return unsubscribe;
   }, []);
 
   // ✅ Handle redirectUri based on platform
