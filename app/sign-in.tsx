@@ -43,6 +43,7 @@ const SignInScreen = () => {
 
   useEffect(() => {
     if (response?.type === 'success') {
+      console.log('Auth response:', response);
       const { id_token } = response.params;
 
       const credential = GoogleAuthProvider.credential(id_token);
@@ -63,7 +64,10 @@ const SignInScreen = () => {
       <Button
         disabled={!request}
         title="Sign in with Google"
-        onPress={() => promptAsync()}
+        onPress={() => {
+          console.log('Signing in...');
+          promptAsync();
+        }}
       />
     </View>
   );
