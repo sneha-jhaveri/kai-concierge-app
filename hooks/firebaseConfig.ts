@@ -1,25 +1,14 @@
-import Constants from 'expo-constants';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 
-const {
-  FIREBASE_API_KEY,
-  FIREBASE_AUTH_DOMAIN,
-  FIREBASE_PROJECT_ID,
-  FIREBASE_STORAGE_BUCKET,
-  FIREBASE_MESSAGING_SENDER_ID,
-  FIREBASE_APP_ID,
-  FIREBASE_MEASUREMENT_ID,
-} = Constants.expoConfig?.extra || {};
-
 const firebaseConfig = {
-  apiKey: FIREBASE_API_KEY,
-  authDomain: FIREBASE_AUTH_DOMAIN,
-  projectId: FIREBASE_PROJECT_ID,
-  storageBucket: FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: FIREBASE_MESSAGING_SENDER_ID,
-  appId: FIREBASE_APP_ID,
-  measurementId: FIREBASE_MEASUREMENT_ID,
+  apiKey: 'AIzaSyAlWu5-bcN5B6RvCxVrRv4q-IVZorZWGd0',
+  authDomain: 'kai-db-b661d.firebaseapp.com',
+  projectId: 'kai-db-b661d',
+  storageBucket: 'kai-db-b661d.appspot.com',
+  messagingSenderId: '1050715964408',
+  appId: '1:1050715964408:web:fff5d338659b4b41804c0d',
+  measurementId: 'G-T1ZFHWS82Y',
 };
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
