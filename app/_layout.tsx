@@ -84,31 +84,29 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [initialRoute, setInitialRoute] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [fontsLoaded] = useFonts({
     Inter_400Regular: require('@expo-google-fonts/inter/Inter_400Regular.ttf'),
     PlayfairDisplay_400Regular: require('@expo-google-fonts/playfair-display/PlayfairDisplay_400Regular.ttf'),
   });
 
   useEffect(() => {
-    const prepare = async () => {
-      onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-          setInitialRoute('sign-in');
-        } else {
-          const hasOnboarded = await AsyncStorage.getItem(
-            'hasCompletedOnboarding'
-          );
-          setInitialRoute(hasOnboarded === 'true' ? '(tabs)' : 'onboarding');
-        }
-
-        await SplashScreen.hideAsync();
-      });
-    };
-
-    prepare();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        setInitialRoute('sign-in');
+      } else {
+        const hasOnboarded = await AsyncStorage.getItem(
+          'hasCompletedOnboarding'
+        );
+        setInitialRoute(hasOnboarded === 'true' ? '(tabs)' : 'onboarding');
+      }
+      setAuthChecked(true);
+      await SplashScreen.hideAsync();
+    });
+    return unsubscribe;
   }, []);
 
-  if (!fontsLoaded || !initialRoute) return null;
+  if (!fontsLoaded || !authChecked || !initialRoute) return null; // show splash until ready
 
   return (
     <>

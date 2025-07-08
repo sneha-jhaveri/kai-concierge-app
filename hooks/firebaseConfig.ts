@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 
+// ✅ Firebase configuration
 const firebaseConfig = {
   apiKey: 'AIzaSyAlWu5-bcN5B6RvCxVrRv4q-IVZorZWGd0',
   authDomain: 'kai-db-b661d.firebaseapp.com',
@@ -11,6 +12,8 @@ const firebaseConfig = {
   measurementId: 'G-T1ZFHWS82Y',
 };
 
+// ✅ Initialize app (only once)
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
+// ✅ Export Firebase Auth instance
 export const auth = getAuth(app);
