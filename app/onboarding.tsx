@@ -30,6 +30,9 @@ import {
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generatePersona, PersonaSummary } from '../api/persona';
+import { db, auth } from '../hooks/firebaseConfig';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const { width } = Dimensions.get('window');
 
@@ -54,10 +57,19 @@ const socialPlatforms = [
   },
 ];
 
+// Add this type for platform keys
+const platforms = ['instagram', 'twitter', 'linkedin'] as const;
+type Platform = (typeof platforms)[number];
+
 export default function OnboardingScreen() {
   const router = useRouter();
-  const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
-  const [username, setUsername] = useState('');
+  const [user, setUser] = useState<any>(null);
+  const [usernames, setUsernames] = useState<Record<Platform, string>>({
+    instagram: '',
+    twitter: '',
+    linkedin: '',
+  });
+  const [persona, setPersona] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState('');
 
@@ -125,28 +137,72 @@ export default function OnboardingScreen() {
     }
   }, [isAnalyzing]);
 
-  const handleSocialLogin = async (platform: string) => {
-    if (!username.trim()) {
-      setError('Username is required');
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      console.log('onAuthStateChanged user:', u);
+      if (u === null) {
+        console.warn('User not authenticated, redirecting to /sign-in');
+        router.replace('/sign-in');
+      } else {
+        console.log('User authenticated:', u.email || u.uid);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  const handleConnect = async (
+    platform: 'instagram' | 'twitter' | 'linkedin'
+  ) => {
+    if (!usernames[platform].trim()) {
+      setError(`Please enter your ${platform} username.`);
       return;
     }
+    setError('');
+    // Optionally, validate username or do OAuth here
+    alert(
+      `${platform.charAt(0).toUpperCase() + platform.slice(1)} username set: ${
+        usernames[platform]
+      }`
+    );
+  };
 
-    setSelectedPlatform(platform);
+  const handleGeneratePersona = async () => {
+    if (!user) {
+      setError('User not authenticated.');
+      console.error('User not authenticated, cannot save to Firestore.');
+      return;
+    }
     setIsAnalyzing(true);
     setError('');
-
     try {
-      const result = await generatePersona(
-        platform as 'instagram' | 'twitter' | 'linkedin',
-        username.trim()
-      );
+      // Save usernames to Firestore
+      console.log('Saving to Firestore for user:', user?.uid, usernames);
+      const userRef = doc(db, 'users', user.uid);
+      await setDoc(userRef, { usernames }, { merge: true });
+      console.log('Saved usernames to Firestore');
 
-      await AsyncStorage.setItem('personaSummary', JSON.stringify(result));
-      await AsyncStorage.setItem('personaFullAnalysis', result.full_analysis);
-
-      setTimeout(() => router.replace('/persona-storyboard' as any), 1000);
+      // Call BrightData for each platform and save persona
+      const personaResults: any = {};
+      for (const platform of platforms) {
+        const username = usernames[platform];
+        if (username) {
+          try {
+            const result = await generatePersona(platform, username);
+            personaResults[platform] = result;
+          } catch (err) {
+            personaResults[platform] = { error: 'Failed to generate persona.' };
+            console.error(`BrightData error for ${platform}:`, err);
+          }
+        }
+      }
+      await setDoc(userRef, { persona: personaResults }, { merge: true });
+      console.log('Saved persona to Firestore:', personaResults);
+      setPersona(personaResults);
     } catch (err) {
-      setError('Failed to generate persona. Please try again.');
+      setError('Failed to save data or generate persona.');
+      console.error('Firestore error:', err);
+    } finally {
       setIsAnalyzing(false);
     }
   };
@@ -202,8 +258,8 @@ export default function OnboardingScreen() {
             </View>
             <Text style={styles.analysisTitle}>AI Profile Analysis</Text>
             <Text style={styles.analysisSubtitle}>
-              Kai is analyzing your {selectedPlatform} profile to create your
-              personalized experience
+              Kai is analyzing your {persona && persona.platform} profile to
+              create your personalized experience
             </Text>
 
             {/* Bouncing Dots Loader */}
@@ -299,48 +355,118 @@ export default function OnboardingScreen() {
         </View>
 
         <Animated.View style={[styles.socialContainer, socialAnimatedStyle]}>
-          <Text style={styles.socialTitle}>Enter your username</Text>
-          <TextInput
-            placeholder="Username"
-            value={username}
-            onChangeText={setUsername}
-            placeholderTextColor="#666666"
-            style={styles.input}
-          />
-
-          <Text style={styles.platformTitle}>Choose your platform</Text>
-          {socialPlatforms.map((platform) => (
-            <TouchableOpacity
-              key={platform.name}
-              style={styles.socialButton}
-              onPress={() => handleSocialLogin(platform.value)}
-              disabled={!username.trim()}
+          <Text style={styles.socialTitle}>Enter your usernames</Text>
+          {platforms.map((platform) => (
+            <View
+              key={platform}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginBottom: 16,
+              }}
             >
-              <BlurView intensity={20} style={styles.socialButtonBlur}>
-                <View
-                  style={[
-                    styles.socialIconContainer,
-                    { backgroundColor: platform.color },
-                  ]}
-                >
-                  <platform.icon size={20} color="#FFFFFF" />
-                </View>
-                <View style={styles.socialTextContainer}>
-                  <Text style={styles.socialText}>
-                    Connect with {platform.name}
-                  </Text>
-                  <Text style={styles.socialDescription}>
-                    Analyze your {platform.name.toLowerCase()} profile
-                  </Text>
-                </View>
-                <View style={styles.securityBadge}>
-                  <Text style={styles.securityText}>Secure</Text>
-                </View>
-              </BlurView>
-            </TouchableOpacity>
+              <Text
+                style={{
+                  color: '#fff',
+                  width: 90,
+                  textTransform: 'capitalize',
+                }}
+              >
+                {platform}:
+              </Text>
+              <TextInput
+                placeholder={`${platform} username`}
+                value={usernames[platform]}
+                onChangeText={(text) =>
+                  setUsernames((prev) => ({ ...prev, [platform]: text }))
+                }
+                placeholderTextColor="#666666"
+                style={[styles.input, { flex: 1, marginBottom: 0 }]}
+              />
+              <TouchableOpacity
+                style={{
+                  marginLeft: 8,
+                  backgroundColor: '#FFD700',
+                  borderRadius: 8,
+                  padding: 8,
+                }}
+                onPress={() => handleConnect(platform)}
+              >
+                <Text style={{ color: '#0A0A0A', fontWeight: 'bold' }}>
+                  Connect
+                </Text>
+              </TouchableOpacity>
+            </View>
           ))}
           {error ? <Text style={styles.error}>{error}</Text> : null}
+          <TouchableOpacity
+            style={{
+              backgroundColor: '#FFD700',
+              borderRadius: 16,
+              padding: 16,
+              marginTop: 16,
+            }}
+            onPress={handleGeneratePersona}
+            disabled={isAnalyzing}
+          >
+            <Text
+              style={{
+                color: '#0A0A0A',
+                fontWeight: 'bold',
+                textAlign: 'center',
+              }}
+            >
+              Generate Persona
+            </Text>
+          </TouchableOpacity>
         </Animated.View>
+        {persona && (
+          <View
+            style={{
+              marginTop: 32,
+              backgroundColor: '#222',
+              borderRadius: 16,
+              padding: 16,
+            }}
+          >
+            <Text
+              style={{
+                color: '#FFD700',
+                fontSize: 18,
+                fontWeight: 'bold',
+                marginBottom: 8,
+              }}
+            >
+              Persona Results
+            </Text>
+            {Object.entries(persona).map(([platform, result]) => (
+              <View key={platform} style={{ marginBottom: 12 }}>
+                <Text
+                  style={{
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  {platform}
+                </Text>
+                {result && typeof result === 'object' && 'summary' in result ? (
+                  <Text style={{ color: '#fff' }}>
+                    {JSON.stringify(result.summary, null, 2)}
+                  </Text>
+                ) : result &&
+                  typeof result === 'object' &&
+                  'error' in result ? (
+                  <Text style={{ color: 'red' }}>
+                    {(result as any).error || 'No data'}
+                  </Text>
+                ) : (
+                  <Text style={{ color: 'red' }}>No data</Text>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
       </View>
     </View>
   );
