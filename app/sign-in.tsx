@@ -71,6 +71,7 @@ const SignInScreen = () => {
           const userCredential = await signInWithCredential(auth, credential);
           console.log('✅ Firebase user signed in:', userCredential.user);
           alert('✅ Signed in as: ' + userCredential.user.email);
+          router.replace('/onboarding');
           console.log(
             '🔄 Sign-in: User signed in, waiting for root layout to redirect...'
           );
@@ -104,9 +105,9 @@ const SignInScreen = () => {
       />
 
       {/* Test button for debugging */}
-      <TouchableOpacity style={styles.testButton} onPress={handleTestRedirect}>
+      {/* <TouchableOpacity style={styles.testButton} onPress={handleTestRedirect}>
         <Text style={styles.testButtonText}>Test: Go to Onboarding</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 };
