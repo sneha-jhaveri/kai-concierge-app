@@ -20,20 +20,24 @@ WebBrowser.maybeCompleteAuthSession();
 const SignInScreen = () => {
   const router = useRouter();
 
-  // Redirect URI setup
+  // Simplified redirect URI setup
   const isWeb = Platform.OS === 'web';
   const isLocalhost =
     isWeb &&
     (window.location.hostname === 'localhost' ||
       window.location.hostname === '127.0.0.1');
+
+  // Use root path for better OAuth compatibility
   const redirectUri = isWeb
     ? isLocalhost
-      ? window.location.origin // e.g. http://localhost:8081
-      : 'https://kai-concierge.netlify.app'
+      ? `${window.location.origin}/` // Local development
+      : 'https://kai-concierge.netlify.app/' // Production
     : AuthSession.makeRedirectUri({
         native: 'com.kai.concierge:/oauthredirect',
         scheme: 'com.kai.concierge',
       });
+
+  console.log('🔗 Redirect URI:', redirectUri);
 
   // Google Auth Request
   const [request, response, promptAsync] = Google.useAuthRequest({

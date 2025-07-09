@@ -94,39 +94,14 @@ export default function ServicesScreen() {
       }
 
       console.log(
-        '📤 Sending persona analysis to services API:',
+        '📤 Persona analysis for services:',
         fullAnalysis.substring(0, 200) + '...'
       );
 
-      // Use the correct API endpoint
-      try {
-        const response = await fetch(
-          'https://your-api-endpoint.com/api/suggest-services',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              personaAnalysis: fullAnalysis,
-            }),
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log('✅ Received services from API:', data);
-          setServices(data);
-        } else {
-          console.log('⚠️ API not available, using personalized services');
-          const personalizedServices = getPersonalizedServices(personaData);
-          setServices(personalizedServices);
-        }
-      } catch (apiError) {
-        console.log('⚠️ API error, using personalized services:', apiError);
-        const personalizedServices = getPersonalizedServices(personaData);
-        setServices(personalizedServices);
-      }
+      // Use personalized services based on persona data
+      console.log('✅ Using personalized services based on persona');
+      const personalizedServices = getPersonalizedServices(personaData);
+      setServices(personalizedServices);
     } catch (error) {
       console.error('❌ Error fetching services:', error);
       setServices(getDefaultServices());
