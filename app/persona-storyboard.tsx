@@ -17,6 +17,8 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withSpring,
+  withDelay,
+  Easing,
 } from 'react-native-reanimated';
 import {
   Sparkles,
@@ -31,24 +33,26 @@ import {
   CheckCircle,
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../hooks/firebaseConfig';
 
 const { width, height } = Dimensions.get('window');
 
+interface Slide {
+  title: string;
+  content: string;
+  image: string;
+  icon: any;
+}
+
 export default function PersonaStoryboardScreen() {
   const router = useRouter();
-  interface Slide {
-    id: number;
-    title: string;
-    content: string;
-    image: string;
-    icon: any;
-  }
-
-  const [summary, setSummary] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
+  const [personaData, setPersonaData] = useState<any>(null);
   const [slides, setSlides] = useState<Slide[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // Add loading state
+  const [isLoading, setIsLoading] = useState(true);
 
   const imageScale = useSharedValue(1);
   const slideOpacity = useSharedValue(0);
@@ -56,96 +60,210 @@ export default function PersonaStoryboardScreen() {
   const progressWidth = useSharedValue(0);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true); // Start loading
-      try {
-        const raw = await AsyncStorage.getItem('personaSummary');
-        console.log('Raw data from AsyncStorage:', raw); // Debug log
-        if (!raw) {
-          console.warn('No personaSummary found in AsyncStorage');
-          setIsLoading(false);
-          return;
-        }
-
-        let parsed;
-        try {
-          parsed = JSON.parse(raw);
-        } catch (jsonError) {
-          console.error('Invalid JSON in personaSummary:', raw, jsonError);
-          setIsLoading(false);
-          return;
-        }
-
-        console.log('Parsed personaSummary:', parsed); // Debug log
-        setSummary(parsed?.summary || null);
-
-        const slidesData = parsed?.slides;
-        if (!slidesData) {
-          console.warn(
-            'Slides data not found in AsyncStorage. Parsed:',
-            parsed
-          );
-          setIsLoading(false);
-          return;
-        }
-
-        const icons = [User, Heart, Star, ShoppingBag, Target];
-        const slideOrder = [
-          'digital_identity',
-          'personality_type',
-          'interests_habits',
-          'shopping_persona',
-          'brand_recommendations',
-        ];
-
-        const slidesArray = slideOrder
-          .map((key, index) => {
-            const slide = slidesData[key];
-            if (!slide || !Array.isArray(slide.points)) return null;
-
-            return {
-              id: index + 1,
-              title: slide.title || 'Untitled Slide',
-              content: slide.points.join('\n\n'),
-              image: `https://source.unsplash.com/random/800x600?sig=${index}`,
-              icon: icons[index] || Sparkles,
-            };
-          })
-          .filter((s): s is Slide => s !== null);
-
-        setSlides(slidesArray);
-      } catch (error) {
-        console.error('Error fetching persona data:', error);
-      } finally {
-        setIsLoading(false); // End loading
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      if (u === null) {
+        router.replace('/sign-in');
+      } else {
+        await loadPersonaData();
       }
-    };
-
-    fetchData();
+    });
+    return unsubscribe;
   }, []);
 
+  const loadPersonaData = async () => {
+    setIsLoading(true);
+    try {
+      // Load persona data from AsyncStorage
+      const raw = await AsyncStorage.getItem('personaData');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        console.log('✅ Loaded persona data from AsyncStorage:', parsed);
+        setPersonaData(parsed);
+
+        // Convert the new API response structure to slides
+        if (parsed.sections && Array.isArray(parsed.sections)) {
+          const icons = [User, Heart, Star, ShoppingBag, Target];
+          const processedSlides = parsed.sections.map(
+            (section: any, index: number) => ({
+              title: section.heading || 'Slide Title',
+              content: section.content || 'Slide content',
+              image: `https://picsum.photos/400/300?random=${index}`,
+              icon: icons[index % icons.length],
+            })
+          ) as Slide[];
+
+          setSlides(processedSlides);
+        } else {
+          // Fallback for old structure
+          console.log('⚠️ Using fallback persona structure');
+          const fallbackSlides = [
+            {
+              title: 'Your Digital Identity',
+              content:
+                "Based on your social media presence, we've analyzed your digital footprint and preferences.",
+              image: 'https://picsum.photos/400/300?random=1',
+              icon: User,
+            },
+            {
+              title: 'Personality Insights',
+              content:
+                'Your online behavior reveals a creative and tech-savvy personality with a passion for innovation.',
+              image: 'https://picsum.photos/400/300?random=2',
+              icon: Heart,
+            },
+            {
+              title: 'Interests & Habits',
+              content:
+                "We've identified your key interests in technology, finance, and lifestyle content.",
+              image: 'https://picsum.photos/400/300?random=3',
+              icon: Star,
+            },
+            {
+              title: 'Shopping Preferences',
+              content:
+                'Your shopping behavior shows a preference for quality over quantity, with a focus on tech and lifestyle products.',
+              image: 'https://picsum.photos/400/300?random=4',
+              icon: ShoppingBag,
+            },
+            {
+              title: 'Personalized Recommendations',
+              content:
+                "Based on your profile, we'll curate luxury experiences and services tailored to your preferences.",
+              image: 'https://picsum.photos/400/300?random=5',
+              icon: Target,
+            },
+          ];
+          setSlides(fallbackSlides);
+        }
+      } else {
+        console.log('⚠️ No persona data found, using default slides');
+        // Default slides if no data
+        const defaultSlides = [
+          {
+            title: 'Your Digital Identity',
+            content:
+              "Based on your social media presence, we've analyzed your digital footprint and preferences.",
+            image: 'https://picsum.photos/400/300?random=1',
+            icon: User,
+          },
+          {
+            title: 'Personality Insights',
+            content:
+              'Your online behavior reveals a creative and tech-savvy personality with a passion for innovation.',
+            image: 'https://picsum.photos/400/300?random=2',
+            icon: Heart,
+          },
+          {
+            title: 'Interests & Habits',
+            content:
+              "We've identified your key interests in technology, finance, and lifestyle content.",
+            image: 'https://picsum.photos/400/300?random=3',
+            icon: Star,
+          },
+          {
+            title: 'Shopping Preferences',
+            content:
+              'Your shopping behavior shows a preference for quality over quantity, with a focus on tech and lifestyle products.',
+            image: 'https://picsum.photos/400/300?random=4',
+            icon: ShoppingBag,
+          },
+          {
+            title: 'Personalized Recommendations',
+            content:
+              "Based on your profile, we'll curate luxury experiences and services tailored to your preferences.",
+            image: 'https://picsum.photos/400/300?random=5',
+            icon: Target,
+          },
+        ];
+        setSlides(defaultSlides);
+      }
+    } catch (error) {
+      console.error('❌ Error loading persona data:', error);
+      // Set default slides on error
+      const defaultSlides = [
+        {
+          title: 'Your Digital Identity',
+          content:
+            "Based on your social media presence, we've analyzed your digital footprint and preferences.",
+          image: 'https://picsum.photos/400/300?random=1',
+          icon: User,
+        },
+        {
+          title: 'Personality Insights',
+          content:
+            'Your online behavior reveals a creative and tech-savvy personality with a passion for innovation.',
+          image: 'https://picsum.photos/400/300?random=2',
+          icon: Heart,
+        },
+        {
+          title: 'Interests & Habits',
+          content:
+            "We've identified your key interests in technology, finance, and lifestyle content.",
+          image: 'https://picsum.photos/400/300?random=3',
+          icon: Star,
+        },
+        {
+          title: 'Shopping Preferences',
+          content:
+            'Your shopping behavior shows a preference for quality over quantity, with a focus on tech and lifestyle products.',
+          image: 'https://picsum.photos/400/300?random=4',
+          icon: ShoppingBag,
+        },
+        {
+          title: 'Personalized Recommendations',
+          content:
+            "Based on your profile, we'll curate luxury experiences and services tailored to your preferences.",
+          image: 'https://picsum.photos/400/300?random=5',
+          icon: Target,
+        },
+      ];
+      setSlides(defaultSlides);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    if (!isLoading && slides.length > 0) {
-      imageScale.value = withTiming(1.05, { duration: 5000 });
-      slideOpacity.value = withSpring(1);
-      slideTranslateX.value = withSpring(0);
-      progressWidth.value = withSpring(
-        (currentSlide + 1) / (slides.length || 1)
+    if (slides.length > 0) {
+      // Animate progress bar
+      progressWidth.value = withTiming(
+        ((currentSlide + 1) / slides.length) * (width - 40),
+        { duration: 500, easing: Easing.out(Easing.quad) }
+      );
+
+      // Animate slide transition
+      slideOpacity.value = 0;
+      slideTranslateX.value = 50;
+
+      slideOpacity.value = withDelay(
+        100,
+        withSpring(1, { damping: 15, stiffness: 100 })
+      );
+      slideTranslateX.value = withDelay(
+        100,
+        withSpring(0, { damping: 15, stiffness: 100 })
+      );
+
+      // Animate image scale
+      imageScale.value = withDelay(
+        200,
+        withSpring(1, { damping: 15, stiffness: 100 })
       );
     }
-  }, [currentSlide, isLoading, slides.length]);
-
-  const imageAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: imageScale.value }],
-  }));
+  }, [currentSlide, slides]);
 
   const slideAnimatedStyle = useAnimatedStyle(() => ({
     opacity: slideOpacity.value,
     transform: [{ translateX: slideTranslateX.value }],
   }));
 
+  const imageAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: imageScale.value }],
+  }));
+
   const progressAnimatedStyle = useAnimatedStyle(() => ({
-    width: `${progressWidth.value * 100}%`,
+    width: progressWidth.value,
   }));
 
   if (isLoading) {
@@ -155,24 +273,16 @@ export default function PersonaStoryboardScreen() {
           colors={['#0A0A0A', '#1A1A1A']}
           style={styles.background}
         />
-        <Text style={styles.loadingText}>Loading...</Text>
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading your persona...</Text>
+          </View>
+        </SafeAreaView>
       </View>
     );
   }
 
-  if (!slides.length) {
-    return (
-      <View style={styles.container}>
-        <LinearGradient
-          colors={['#0A0A0A', '#1A1A1A']}
-          style={styles.background}
-        />
-        <Text style={styles.loadingText}>No data available</Text>
-      </View>
-    );
-  }
-
-  if (isComplete) {
+  if (slides.length === 0) {
     return (
       <View style={styles.container}>
         <LinearGradient
@@ -180,19 +290,14 @@ export default function PersonaStoryboardScreen() {
           style={styles.background}
         />
         <SafeAreaView style={styles.safeArea}>
-          <View style={styles.completeContainer}>
-            <View style={styles.completeIconContainer}>
-              <LinearGradient
-                colors={['#FFD700', '#FFA500']}
-                style={styles.completeIcon}
-              >
-                <CheckCircle size={48} color="#0A0A0A" />
-              </LinearGradient>
-            </View>
-            <Text style={styles.completeTitle}>Profile Complete!</Text>
-            <Text style={styles.completeSubtitle}>
-              Kai is ready to assist you with personalized luxury services
-            </Text>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>No persona data found</Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => router.replace('/onboarding')}
+            >
+              <Text style={styles.retryButtonText}>Go to Onboarding</Text>
+            </TouchableOpacity>
           </View>
         </SafeAreaView>
       </View>
@@ -361,5 +466,31 @@ const styles = StyleSheet.create({
     color: '#CCCCCC',
     textAlign: 'center',
     lineHeight: 24,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontFamily: 'Inter-Medium',
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: '#FFD700',
+    padding: 16,
+    borderRadius: 16,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#0A0A0A',
   },
 });

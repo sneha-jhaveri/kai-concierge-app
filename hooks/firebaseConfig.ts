@@ -1,16 +1,17 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 // ✅ Firebase configuration
 const firebaseConfig = {
-  apiKey: 'AIzaSyAlWu5-bcN5B6RvCxVrRv4q-IVZorZWGd0',
-  authDomain: 'kai-db-b661d.firebaseapp.com',
-  projectId: 'kai-db-b661d',
-  storageBucket: 'kai-db-b661d.appspot.com',
-  messagingSenderId: '1050715964408',
-  appId: '1:1050715964408:web:fff5d338659b4b41804c0d',
-  measurementId: 'G-T1ZFHWS82Y',
+  apiKey: "AIzaSyDISEiTs4Zcgvq46mpevHrmM_6QICxvwaU",
+  authDomain: "kai-db-38499.firebaseapp.com",
+  projectId: "kai-db-38499",
+  storageBucket: "kai-db-38499.firebasestorage.app",
+  messagingSenderId: "684487509788",
+  appId: "1:684487509788:web:540f566bbba48b4e7adcd9",
+  measurementId: "G-R6FQ17306K"
 };
 
 // ✅ Initialize app (only once)
@@ -21,3 +22,6 @@ export const auth = getAuth(app);
 
 // ✅ Export Firestore instance
 export const db = getFirestore(app);
+
+// ✅ Export Firebase Storage instance
+export const storage = getStorage(app, 'gs://kai-db-38499.firebasestorage.app');

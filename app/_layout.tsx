@@ -90,23 +90,102 @@ export default function RootLayout() {
     PlayfairDisplay_400Regular: require('@expo-google-fonts/playfair-display/PlayfairDisplay_400Regular.ttf'),
   });
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        setInitialRoute('sign-in');
+  const saveUserToGlobalList = async (userData: any) => {
+    try {
+      // Get existing users
+      const allUsersRaw = await AsyncStorage.getItem('allUsers');
+      const allUsers = allUsersRaw ? JSON.parse(allUsersRaw) : [];
+
+      // Check if user already exists
+      const existingUserIndex = allUsers.findIndex(
+        (u: any) => u.userId === userData.userId
+      );
+
+      if (existingUserIndex !== -1) {
+        // Update existing user
+        allUsers[existingUserIndex] = {
+          ...allUsers[existingUserIndex],
+          lastSignIn: new Date().toISOString(),
+          email: userData.email,
+          displayName: userData.displayName,
+        };
       } else {
-        const hasOnboarded = await AsyncStorage.getItem(
-          'hasCompletedOnboarding'
-        );
-        setInitialRoute(hasOnboarded === 'true' ? '(tabs)' : 'onboarding');
+        // Add new user
+        allUsers.push({
+          userId: userData.userId,
+          email: userData.email,
+          displayName: userData.displayName,
+          lastSignIn: new Date().toISOString(),
+          platforms: {},
+        });
       }
-      setAuthChecked(true);
-      await SplashScreen.hideAsync();
+
+      // Save updated user list
+      await AsyncStorage.setItem('allUsers', JSON.stringify(allUsers));
+      console.log('✅ User data saved to global list');
+    } catch (error) {
+      console.error('❌ Error saving user to global list:', error);
+    }
+  };
+
+  const handleAuthStateChange = async (user: any) => {
+    console.log('🔄 Root layout: Auth state changed', {
+      user: user ? user.email : 'null',
+      uid: user?.uid,
     });
+
+    if (!user) {
+      console.log('🔄 Root layout: No user, setting route to sign-in');
+      setInitialRoute('sign-in');
+    } else {
+      console.log(
+        '🔄 Root layout: User authenticated, checking onboarding status'
+      );
+
+      // Save user to global list for dashboard tracking
+      await saveUserToGlobalList({
+        userId: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+      });
+
+      const hasOnboarded = await AsyncStorage.getItem('hasCompletedOnboarding');
+      console.log('🔄 Root layout: Onboarding status:', hasOnboarded);
+
+      const route = hasOnboarded === 'true' ? '(tabs)' : 'onboarding';
+      console.log('🔄 Root layout: Setting route to:', route);
+      setInitialRoute(route);
+    }
+    setAuthChecked(true);
+    await SplashScreen.hideAsync();
+  };
+
+  useEffect(() => {
+    console.log('🔄 Root layout: Setting up auth state listener');
+
+    // Check if user is already signed in
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      console.log('🔄 Root layout: User already signed in:', currentUser.email);
+      handleAuthStateChange(currentUser);
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, handleAuthStateChange);
     return unsubscribe;
   }, []);
 
-  if (!fontsLoaded || !authChecked || !initialRoute) return null; // show splash until ready
+  console.log('🔄 Root layout: Render state', {
+    fontsLoaded,
+    authChecked,
+    initialRoute,
+  });
+
+  if (!fontsLoaded || !authChecked || !initialRoute) {
+    console.log('🔄 Root layout: Showing splash screen');
+    return null; // show splash until ready
+  }
+
+  console.log('🔄 Root layout: Rendering app with route:', initialRoute);
 
   return (
     <>
@@ -116,6 +195,8 @@ export default function RootLayout() {
       >
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="onboarding" />
+        <Stack.Screen name="persona-storyboard" />
+        <Stack.Screen name="persona" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="+not-found" />
       </Stack>

@@ -1,13 +1,16 @@
 import React, { useEffect } from 'react';
-import { View, Button, StyleSheet, Text, Platform } from 'react-native';
+import {
+  View,
+  Button,
+  StyleSheet,
+  Text,
+  Platform,
+  TouchableOpacity,
+} from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import * as AuthSession from 'expo-auth-session';
-import {
-  GoogleAuthProvider,
-  signInWithCredential,
-  onAuthStateChanged,
-} from 'firebase/auth';
+import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { auth } from '../hooks/firebaseConfig';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
@@ -16,17 +19,6 @@ WebBrowser.maybeCompleteAuthSession();
 
 const SignInScreen = () => {
   const router = useRouter();
-
-  // Redirect if already signed in (e.g. web refresh)
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        console.log('✅ Already signed in:', user.email);
-        router.replace('/onboarding');
-      }
-    });
-    return unsubscribe;
-  }, []);
 
   // Redirect URI setup
   const isWeb = Platform.OS === 'web';
@@ -75,7 +67,10 @@ const SignInScreen = () => {
           const userCredential = await signInWithCredential(auth, credential);
           console.log('✅ Firebase user signed in:', userCredential.user);
           alert('✅ Signed in as: ' + userCredential.user.email);
-          router.replace('/onboarding');
+          console.log(
+            '🔄 Sign-in: User signed in, waiting for root layout to redirect...'
+          );
+          // The root layout will handle the redirect based on auth state
         } catch (err) {
           console.error('❌ Firebase signInWithCredential error:', err);
           const errorMessage = err instanceof Error ? err.message : String(err);
@@ -90,6 +85,11 @@ const SignInScreen = () => {
     handleAuth();
   }, [response]);
 
+  const handleTestRedirect = () => {
+    console.log('🔄 Sign-in: Manual redirect to onboarding');
+    router.replace('/onboarding');
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Welcome to Kai Concierge</Text>
@@ -98,23 +98,38 @@ const SignInScreen = () => {
         title="Sign in with Google"
         onPress={() => promptAsync()}
       />
+
+      {/* Test button for debugging */}
+      <TouchableOpacity style={styles.testButton} onPress={handleTestRedirect}>
+        <Text style={styles.testButtonText}>Test: Go to Onboarding</Text>
+      </TouchableOpacity>
     </View>
   );
 };
-
-export default SignInScreen;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
     backgroundColor: '#0A0A0A',
   },
   title: {
-    fontSize: 20,
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
     marginBottom: 20,
-    color: '#fff',
+  },
+  testButton: {
+    marginTop: 20,
+    backgroundColor: '#FFD700',
+    padding: 12,
+    borderRadius: 8,
+  },
+  testButtonText: {
+    color: '#0A0A0A',
+    fontWeight: 'bold',
   },
 });
+
+export default SignInScreen;

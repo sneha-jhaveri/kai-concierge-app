@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Dimensions,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -61,6 +62,18 @@ const socialPlatforms = [
 const platforms = ['instagram', 'twitter', 'linkedin'] as const;
 type Platform = (typeof platforms)[number];
 
+const SCRAPE_ENDPOINTS: Record<Platform, string> = {
+  instagram:
+    'https://v0-fork-of-brightdata-api-examples-tau.vercel.app/api/scrape/instagram',
+  twitter:
+    'https://v0-fork-of-brightdata-api-examples-tau.vercel.app/api/scrape/twitter',
+  linkedin:
+    'https://v0-fork-of-brightdata-api-examples-tau.vercel.app/api/scrape/linkedin',
+};
+
+const PERSONA_ENDPOINT =
+  'https://v0-fork-of-brightdata-api-examples-tau.vercel.app/api/generate-persona';
+
 export default function OnboardingScreen() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -68,6 +81,21 @@ export default function OnboardingScreen() {
     instagram: '',
     twitter: '',
     linkedin: '',
+  });
+  const [connected, setConnected] = useState<Record<Platform, boolean>>({
+    instagram: false,
+    twitter: false,
+    linkedin: false,
+  });
+  const [loading, setLoading] = useState<Record<Platform, boolean>>({
+    instagram: false,
+    twitter: false,
+    linkedin: false,
+  });
+  const [profileData, setProfileData] = useState<Record<Platform, any>>({
+    instagram: null,
+    twitter: null,
+    linkedin: null,
   });
   const [persona, setPersona] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -138,70 +166,248 @@ export default function OnboardingScreen() {
   }, [isAnalyzing]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      console.log('onAuthStateChanged user:', u);
-      if (u === null) {
-        console.warn('User not authenticated, redirecting to /sign-in');
-        router.replace('/sign-in');
-      } else {
-        console.log('User authenticated:', u.email || u.uid);
-      }
-    });
-    return unsubscribe;
+    // Get current user from auth
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      setUser(currentUser);
+      console.log(
+        '✅ Onboarding: User already authenticated:',
+        currentUser.email
+      );
+      // Save user info to AsyncStorage
+      saveUserToAsyncStorage({
+        userId: currentUser.uid,
+        email: currentUser.email || '',
+        displayName: currentUser.displayName || '',
+      }).catch((err) => {
+        console.error('Error saving user to AsyncStorage:', err);
+      });
+    } else {
+      console.log('⚠️ Onboarding: No current user, waiting for auth state');
+    }
+
+    // Load existing connected platforms
+    loadExistingConnections();
   }, []);
 
-  const handleConnect = async (
-    platform: 'instagram' | 'twitter' | 'linkedin'
+  const loadExistingConnections = async () => {
+    try {
+      const userDataRaw = await AsyncStorage.getItem('userData');
+      if (userDataRaw) {
+        const userData = JSON.parse(userDataRaw);
+        if (userData.usernames) {
+          setUsernames(userData.usernames);
+
+          // Check which platforms are already connected
+          const newConnected = { ...connected };
+          const newProfileData = { ...profileData };
+
+          for (const platform of platforms) {
+            if (userData.usernames[platform]) {
+              // Check if we have stored data for this platform
+              const socialDataRaw = await AsyncStorage.getItem(
+                `socialData_${platform}`
+              );
+              if (socialDataRaw) {
+                const socialData = JSON.parse(socialDataRaw);
+                newConnected[platform] = true;
+                newProfileData[platform] = socialData;
+                console.log(`✅ Loaded existing ${platform} connection`);
+              }
+            }
+          }
+
+          setConnected(newConnected);
+          setProfileData(newProfileData);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading existing connections:', error);
+    }
+  };
+
+  const saveUserToAsyncStorage = async (userData: any) => {
+    try {
+      await AsyncStorage.setItem('userData', JSON.stringify(userData));
+      console.log('✅ User data saved to AsyncStorage');
+    } catch (err) {
+      console.error('Error saving user data to AsyncStorage:', err);
+    }
+  };
+
+  const saveSocialDataToAsyncStorage = async (
+    platform: Platform,
+    data: any
   ) => {
+    try {
+      const key = `socialData_${platform}`;
+      await AsyncStorage.setItem(key, JSON.stringify(data));
+      console.log(`✅ ${platform} data saved to AsyncStorage`);
+    } catch (err) {
+      console.error(`Error saving ${platform} data to AsyncStorage:`, err);
+    }
+  };
+
+  const savePersonaToAsyncStorage = async (data: any) => {
+    try {
+      await AsyncStorage.setItem('personaData', JSON.stringify(data));
+      console.log('✅ Persona data saved to AsyncStorage');
+    } catch (err) {
+      console.error('Error saving persona data to AsyncStorage:', err);
+    }
+  };
+
+  const handleConnect = async (platform: Platform) => {
     if (!usernames[platform].trim()) {
-      setError(`Please enter your ${platform} username.`);
+      setError(
+        `Please enter your ${platform} ${
+          platform === 'linkedin' ? 'profile URL' : 'username'
+        }.`
+      );
       return;
     }
     setError('');
-    // Optionally, validate username or do OAuth here
-    alert(
-      `${platform.charAt(0).toUpperCase() + platform.slice(1)} username set: ${
+    setLoading((prev) => ({ ...prev, [platform]: true }));
+    try {
+      console.log(
+        `🔄 Connecting ${platform} with username:`,
         usernames[platform]
-      }`
-    );
+      );
+
+      let body: any = {};
+      if (platform === 'linkedin') {
+        body.url = usernames[platform];
+      } else {
+        body.username = usernames[platform];
+      }
+
+      console.log(
+        `📡 Making request to ${SCRAPE_ENDPOINTS[platform]} with body:`,
+        body
+      );
+
+      const res = await fetch(SCRAPE_ENDPOINTS[platform], {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      console.log(`📊 Response status for ${platform}:`, res.status);
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`❌ API error for ${platform}:`, errorText);
+        throw new Error(`Failed to fetch profile data: ${res.status}`);
+      }
+
+      const data = await res.json();
+      console.log(`✅ Received data for ${platform}:`, data);
+
+      setProfileData((prev) => ({ ...prev, [platform]: data }));
+      setConnected((prev) => ({ ...prev, [platform]: true }));
+
+      // Save username and profileData to AsyncStorage
+      if (user) {
+        try {
+          console.log(`💾 Saving ${platform} data to AsyncStorage...`);
+
+          // Update usernames in AsyncStorage
+          const existingUserData = await AsyncStorage.getItem('userData');
+          const userData = existingUserData ? JSON.parse(existingUserData) : {};
+          userData.usernames = {
+            ...userData.usernames,
+            [platform]: usernames[platform],
+          };
+          await AsyncStorage.setItem('userData', JSON.stringify(userData));
+          console.log(
+            `✅ Saved username for ${platform}:`,
+            usernames[platform]
+          );
+
+          // Save social media data to AsyncStorage
+          await saveSocialDataToAsyncStorage(platform, data);
+          console.log(`✅ Saved ${platform} data to AsyncStorage`);
+
+          // Verify the data was saved
+          const savedData = await AsyncStorage.getItem(
+            `socialData_${platform}`
+          );
+          console.log(
+            `🔍 Verification - saved ${platform} data:`,
+            savedData ? 'Found' : 'Not found'
+          );
+        } catch (err) {
+          console.error(
+            `❌ Error saving ${platform} data to AsyncStorage:`,
+            err
+          );
+        }
+      } else {
+        console.warn('⚠️ No user available for saving data');
+      }
+    } catch (err) {
+      setError(
+        `Failed to connect ${platform}: ${
+          err instanceof Error ? err.message : 'Unknown error'
+        }`
+      );
+      console.error(`❌ Connect error for ${platform}:`, err);
+    } finally {
+      setLoading((prev) => ({ ...prev, [platform]: false }));
+    }
   };
 
   const handleGeneratePersona = async () => {
     if (!user) {
       setError('User not authenticated.');
-      console.error('User not authenticated, cannot save to Firestore.');
+      console.error('User not authenticated, cannot save to AsyncStorage.');
       return;
     }
     setIsAnalyzing(true);
     setError('');
     try {
-      // Save usernames to Firestore
-      console.log('Saving to Firestore for user:', user?.uid, usernames);
-      const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, { usernames }, { merge: true });
-      console.log('Saved usernames to Firestore');
-
-      // Call BrightData for each platform and save persona
-      const personaResults: any = {};
-      for (const platform of platforms) {
-        const username = usernames[platform];
-        if (username) {
-          try {
-            const result = await generatePersona(platform, username);
-            personaResults[platform] = result;
-          } catch (err) {
-            personaResults[platform] = { error: 'Failed to generate persona.' };
-            console.error(`BrightData error for ${platform}:`, err);
-          }
-        }
+      // Merge all available profileData into one array
+      const allData = Object.entries(profileData)
+        .filter(([_, data]) => data && Array.isArray(data))
+        .flatMap(([_, data]) => data);
+      if (allData.length === 0) {
+        setError('No social data available to generate persona.');
+        setIsAnalyzing(false);
+        return;
       }
-      await setDoc(userRef, { persona: personaResults }, { merge: true });
-      console.log('Saved persona to Firestore:', personaResults);
-      setPersona(personaResults);
+      // Use the first connected platform for persona platform/username
+      const firstPlatform = platforms.find((p) => connected[p]);
+      const personaReq = {
+        platform: firstPlatform,
+        username: usernames[firstPlatform!],
+        profileData: allData,
+      };
+      const res = await fetch(PERSONA_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(personaReq),
+      });
+      if (!res.ok) throw new Error('Failed to generate persona');
+      const personaResult = await res.json();
+      setPersona(personaResult);
+
+      // Save persona to AsyncStorage
+      try {
+        await savePersonaToAsyncStorage(personaResult);
+        console.log('✅ Saved persona to AsyncStorage:', personaResult);
+
+        // Mark onboarding as complete
+        await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
+
+        // Navigate to persona storyboard
+        router.replace('/persona-storyboard');
+      } catch (err) {
+        console.error('Error saving persona to AsyncStorage:', err);
+        setError('Failed to save persona data.');
+      }
     } catch (err) {
-      setError('Failed to save data or generate persona.');
-      console.error('Firestore error:', err);
+      setError('Failed to generate persona.');
+      console.error('Persona generation error:', err);
     } finally {
       setIsAnalyzing(false);
     }
@@ -375,39 +581,53 @@ export default function OnboardingScreen() {
                 {platform}:
               </Text>
               <TextInput
-                placeholder={`${platform} username`}
+                placeholder={
+                  platform === 'linkedin'
+                    ? 'LinkedIn profile URL'
+                    : `${platform} username`
+                }
                 value={usernames[platform]}
                 onChangeText={(text) =>
                   setUsernames((prev) => ({ ...prev, [platform]: text }))
                 }
                 placeholderTextColor="#666666"
                 style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                editable={!connected[platform]}
               />
               <TouchableOpacity
                 style={{
                   marginLeft: 8,
-                  backgroundColor: '#FFD700',
+                  backgroundColor: connected[platform] ? '#4CAF50' : '#FFD700',
                   borderRadius: 8,
                   padding: 8,
+                  flexDirection: 'row',
+                  alignItems: 'center',
                 }}
                 onPress={() => handleConnect(platform)}
+                disabled={connected[platform] || loading[platform]}
               >
-                <Text style={{ color: '#0A0A0A', fontWeight: 'bold' }}>
-                  Connect
-                </Text>
+                {loading[platform] ? (
+                  <ActivityIndicator color="#0A0A0A" size="small" />
+                ) : (
+                  <Text style={{ color: '#0A0A0A', fontWeight: 'bold' }}>
+                    {connected[platform] ? 'Connected' : 'Connect'}
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
           ))}
           {error ? <Text style={styles.error}>{error}</Text> : null}
           <TouchableOpacity
             style={{
-              backgroundColor: '#FFD700',
+              backgroundColor: Object.values(connected).some(Boolean)
+                ? '#FFD700'
+                : '#999',
               borderRadius: 16,
               padding: 16,
               marginTop: 16,
             }}
             onPress={handleGeneratePersona}
-            disabled={isAnalyzing}
+            disabled={!Object.values(connected).some(Boolean) || isAnalyzing}
           >
             <Text
               style={{
@@ -427,44 +647,101 @@ export default function OnboardingScreen() {
               backgroundColor: '#222',
               borderRadius: 16,
               padding: 16,
+              shadowColor: '#FFD700',
+              shadowOpacity: 0.3,
+              shadowRadius: 10,
             }}
           >
             <Text
               style={{
                 color: '#FFD700',
-                fontSize: 18,
+                fontSize: 22,
                 fontWeight: 'bold',
-                marginBottom: 8,
+                marginBottom: 12,
+                textAlign: 'center',
               }}
             >
-              Persona Results
+              Your Persona
             </Text>
-            {Object.entries(persona).map(([platform, result]) => (
-              <View key={platform} style={{ marginBottom: 12 }}>
-                <Text
-                  style={{
-                    color: '#fff',
-                    fontWeight: 'bold',
-                    textTransform: 'capitalize',
-                  }}
-                >
-                  {platform}
+            {persona.title && (
+              <Text
+                style={{
+                  color: '#fff',
+                  fontSize: 18,
+                  marginBottom: 16,
+                  textAlign: 'center',
+                }}
+              >
+                {persona.title}
+              </Text>
+            )}
+            {persona.sections && Array.isArray(persona.sections) ? (
+              persona.sections.map((section: any, index: number) => (
+                <View key={index} style={{ marginBottom: 16 }}>
+                  <Text
+                    style={{
+                      color: '#FFD700',
+                      fontSize: 16,
+                      fontWeight: 'bold',
+                      marginBottom: 8,
+                    }}
+                  >
+                    {section.heading}
+                  </Text>
+                  <Text style={{ color: '#fff', fontSize: 14, lineHeight: 20 }}>
+                    {section.content}
+                  </Text>
+                </View>
+              ))
+            ) : persona.summary ? (
+              <>
+                <Text style={{ color: '#fff', fontSize: 16, marginBottom: 8 }}>
+                  Key Insights:
                 </Text>
-                {result && typeof result === 'object' && 'summary' in result ? (
-                  <Text style={{ color: '#fff' }}>
-                    {JSON.stringify(result.summary, null, 2)}
-                  </Text>
-                ) : result &&
-                  typeof result === 'object' &&
-                  'error' in result ? (
-                  <Text style={{ color: 'red' }}>
-                    {(result as any).error || 'No data'}
-                  </Text>
+                {Array.isArray(persona.summary.key_insights) ? (
+                  persona.summary.key_insights.map(
+                    (point: string, i: number) => (
+                      <Text
+                        key={i}
+                        style={{ color: '#FFD700', marginBottom: 4 }}
+                      >
+                        • {point}
+                      </Text>
+                    )
+                  )
                 ) : (
-                  <Text style={{ color: 'red' }}>No data</Text>
+                  <Text style={{ color: '#FFD700' }}>
+                    {persona.summary.key_insights}
+                  </Text>
                 )}
-              </View>
-            ))}
+                <Text style={{ color: '#fff', marginTop: 12 }}>
+                  Personality:{' '}
+                  <Text style={{ color: '#FFD700' }}>
+                    {persona.summary.personality}
+                  </Text>
+                </Text>
+                <Text style={{ color: '#fff' }}>
+                  Interests:{' '}
+                  <Text style={{ color: '#FFD700' }}>
+                    {persona.summary.interests}
+                  </Text>
+                </Text>
+                <Text style={{ color: '#fff' }}>
+                  Shopping:{' '}
+                  <Text style={{ color: '#FFD700' }}>
+                    {persona.summary.shopping}
+                  </Text>
+                </Text>
+                <Text style={{ color: '#fff' }}>
+                  Recommendations:{' '}
+                  <Text style={{ color: '#FFD700' }}>
+                    {persona.summary.recommendations}
+                  </Text>
+                </Text>
+              </>
+            ) : (
+              <Text style={{ color: 'red' }}>No persona data available.</Text>
+            )}
           </View>
         )}
       </View>

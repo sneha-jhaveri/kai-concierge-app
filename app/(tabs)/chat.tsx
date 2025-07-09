@@ -34,6 +34,14 @@ interface Message {
   timestamp: Date;
 }
 
+interface PersonaData {
+  title?: string;
+  sections?: Array<{
+    heading: string;
+    content: string;
+  }>;
+}
+
 const initialMessages: Message[] = [
   {
     id: '1',
@@ -48,16 +56,13 @@ const quickSuggestions = [
   'Find me a personal stylist',
   'Book a fine dining experience',
   'Organize my digital life',
-  'Plan a luxury weekend getaway',
-  'Find me a personal stylist',
-  'Book a fine dining experience',
-  'Organize my digital life',
 ];
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [personaData, setPersonaData] = useState<PersonaData | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const socketRef = useRef<any>(null);
   const [socketConnected, setSocketConnected] = useState(false);
@@ -90,6 +95,8 @@ export default function ChatScreen() {
   }, [isTyping]);
 
   useEffect(() => {
+    loadPersonaData();
+    loadChatHistory();
     connectSocket();
 
     return () => {
@@ -100,196 +107,277 @@ export default function ChatScreen() {
     };
   }, []);
 
+  const loadPersonaData = async () => {
+    try {
+      const personaDataRaw = await AsyncStorage.getItem('personaData');
+      if (personaDataRaw) {
+        const parsed = JSON.parse(personaDataRaw);
+        setPersonaData(parsed);
+        console.log('✅ Loaded persona data for chat:', parsed);
+      }
+    } catch (error) {
+      console.error('Error loading persona data:', error);
+    }
+  };
+
+  const loadChatHistory = async () => {
+    try {
+      const chatHistoryRaw = await AsyncStorage.getItem('chatHistory');
+      if (chatHistoryRaw) {
+        const chatHistory = JSON.parse(chatHistoryRaw);
+        // Convert stored timestamps back to Date objects
+        const parsedMessages = chatHistory.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp),
+        }));
+        setMessages((prev) => [...initialMessages, ...parsedMessages]);
+      }
+    } catch (error) {
+      console.error('Error loading chat history:', error);
+    }
+  };
+
+  const saveChatHistory = async (newMessages: Message[]) => {
+    try {
+      // Convert Date objects to strings for storage
+      const messagesForStorage = newMessages.map((msg) => ({
+        ...msg,
+        timestamp: msg.timestamp.toISOString(),
+      }));
+      await AsyncStorage.setItem(
+        'chatHistory',
+        JSON.stringify(messagesForStorage)
+      );
+    } catch (error) {
+      console.error('Error saving chat history:', error);
+    }
+  };
+
   const connectSocket = async () => {
-    if (
-      !socketConnected &&
-      (!socketRef.current || !socketRef.current.connected)
-    ) {
-      console.log('Connecting as CUSTOMER');
+    try {
+      console.log('🔌 Connecting as CUSTOMER to:', applicationUrl);
+
       socketRef.current = io(applicationUrl, {
-        query: { isWidget: 'true', botId, userId, userType },
         transports: ['websocket'],
+        autoConnect: true,
         reconnection: true,
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
+        timeout: 10000,
       });
 
       socketRef.current.on('connect', () => {
-        console.log('Socket connected');
+        console.log('✅ Socket connected successfully');
         setSocketConnected(true);
+
+        // Join chat room immediately after connection
+        joinChatRoom();
       });
 
       socketRef.current.on('connect_error', (error: any) => {
-        console.error('Socket connection error:', error);
+        console.error('❌ Socket connection error:', error);
+        setSocketConnected(false);
         Alert.alert(
           'Connection Error',
           'Failed to connect to the server. Please check your internet connection and try again.'
         );
       });
 
-      socketRef.current.on(
-        'sessionCreated',
-        async (data: { sessionId: string }) => {
-          console.log('SessionId in widget', data.sessionId);
-          await AsyncStorage.setItem('sessionId', data.sessionId);
-          joinChatRoom();
-        }
-      );
+      socketRef.current.on('disconnect', (reason: string) => {
+        console.log('🔌 Socket disconnected:', reason);
+        setSocketConnected(false);
+        setChatRoomJoined(false);
+      });
 
-      socketRef.current.on('messageToClient', (data: any) => {
-        console.log('Data in widget', data);
-        if (data.sessionId) {
-          AsyncStorage.setItem('sessionId', data.sessionId);
-        }
-
-        if (data.messageType === 'text' && data.response) {
-          const aiMessage: Message = {
+      socketRef.current.on('message', (data: any) => {
+        console.log('📨 Received message:', data);
+        if (data.type === 'bot_response') {
+          const botMessage: Message = {
             id: Date.now().toString(),
-            text: data.response,
+            text: data.message,
             sender: 'ai',
             timestamp: new Date(),
           };
-          setMessages((prev) => [...prev, aiMessage]);
+          setMessages((prev) => [...prev, botMessage]);
+          saveChatHistory([...messages, botMessage]);
           setIsTyping(false);
           scrollViewRef.current?.scrollToEnd({ animated: true });
         }
       });
 
-      socketRef.current.on('handlerChanged', (data: { newHandler: string }) => {
-        const messageText =
-          data.newHandler === 'agent'
-            ? 'A support agent has joined the conversation.'
-            : 'Conversation is now handled by AI assistant.';
-        const aiMessage: Message = {
-          id: Date.now().toString(),
-          text: messageText,
-          sender: 'ai',
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, aiMessage]);
-        scrollViewRef.current?.scrollToEnd({ animated: true });
+      socketRef.current.on('error', (error: any) => {
+        console.error('❌ Socket error:', error);
+        Alert.alert('Error', 'Connection error occurred');
       });
-
-      socketRef.current.on(
-        'adminEndedSession',
-        (data: { message?: string }) => {
-          const messageText =
-            data.message ||
-            'This session has ended. Please start a new session to continue chatting.';
-          const aiMessage: Message = {
-            id: Date.now().toString(),
-            text: messageText,
-            sender: 'ai',
-            timestamp: new Date(),
-          };
-          setMessages((prev) => [...prev, aiMessage]);
-          setInputText('');
-          scrollViewRef.current?.scrollToEnd({ animated: true });
-          const newSessionMessage: Message = {
-            id: Date.now().toString() + '-new-session',
-            text: 'Tap here to start a new session.',
-            sender: 'ai',
-            timestamp: new Date(),
-          };
-          setMessages((prev) => [...prev, newSessionMessage]);
-        }
-      );
-
-      socketRef.current.on('errorResponse', (message: string) => {
-        if (message.includes('session is already closed')) {
-          const aiMessage: Message = {
-            id: Date.now().toString(),
-            text: message,
-            sender: 'ai',
-            timestamp: new Date(),
-          };
-          setMessages((prev) => [...prev, aiMessage]);
-          scrollViewRef.current?.scrollToEnd({ animated: true });
-          const newSessionMessage: Message = {
-            id: Date.now().toString() + '-new-session',
-            text: 'Tap here to start a new session.',
-            sender: 'ai',
-            timestamp: new Date(),
-          };
-          setMessages((prev) => [...prev, newSessionMessage]);
-        }
-      });
-    } else {
-      console.log('Socket already connected');
+    } catch (error) {
+      console.error('❌ Error connecting socket:', error);
+      setSocketConnected(false);
     }
   };
 
   const joinChatRoom = async () => {
-    if (!chatRoomJoined) {
-      const sessionId = await AsyncStorage.getItem('sessionId');
-      if (sessionId && socketRef.current) {
-        socketRef.current.emit('joinSession', {
-          botId,
-          userId,
-          userType,
-          sessionId,
-        });
-        console.log(
-          'Joined room in widget',
-          userType,
-          botId,
-          userId,
-          sessionId
-        );
-        setChatRoomJoined(true);
-      } else {
-        console.log('Cannot join chat room: sessionId not available yet.');
+    if (socketRef.current && socketConnected) {
+      try {
+        const sessionId = await AsyncStorage.getItem('sessionId');
+        if (sessionId) {
+          console.log('🎯 Joining chat room with sessionId:', sessionId);
+          socketRef.current.emit('joinChatRoom', { sessionId });
+          setChatRoomJoined(true);
+        } else {
+          console.log('🆕 No sessionId found, starting new session');
+          startNewSession();
+        }
+      } catch (error) {
+        console.error('❌ Error joining chat room:', error);
+        startNewSession();
       }
-    }
-  };
-
-  const messageToServer = async (message: string, messageType = 'text') => {
-    const sessionId = await AsyncStorage.getItem('sessionId');
-    if (sessionId && socketRef.current && socketRef.current.connected) {
-      const payload = {
-        botId,
-        userId,
-        userType,
-        sessionId,
-        message,
-        messageType,
-      };
-      socketRef.current.emit('messageToServer', payload);
-      console.log('Sending to server:', payload);
     } else {
-      Alert.alert('Error', 'Not connected to the server. Please try again.');
-      await startNewSession();
+      console.log(
+        '❌ Socket not ready for joining chat room, will retry when connected'
+      );
     }
   };
 
   const startNewSession = async () => {
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-      setSocketConnected(false);
-      setChatRoomJoined(false);
+    if (socketRef.current && socketConnected) {
+      try {
+        const sessionData = {
+          botId: '684006e942525d41443ba708',
+          userId: '6840034f42525d41443ba548',
+          userType: 'CUSTOMER',
+        };
+
+        console.log('🆕 Starting new session with:', sessionData);
+
+        socketRef.current.emit('startSession', sessionData, (response: any) => {
+          if (response && response.sessionId) {
+            console.log('✅ Session created with ID:', response.sessionId);
+            AsyncStorage.setItem('sessionId', response.sessionId);
+            setChatRoomJoined(true);
+          } else {
+            console.error('❌ Failed to create session:', response);
+          }
+        });
+      } catch (error) {
+        console.error('❌ Error starting new session:', error);
+      }
+    } else {
+      console.log('❌ Socket not ready for starting session');
     }
-    await AsyncStorage.removeItem('sessionId');
-    setMessages([...initialMessages]);
-    setInputText('');
-    connectSocket();
+  };
+
+  const messageToServer = async (message: string, messageType = 'text') => {
+    if (!socketRef.current || !socketConnected) {
+      console.error('❌ Socket not connected');
+      Alert.alert('Error', 'Chat connection not available. Please try again.');
+      return;
+    }
+
+    if (!chatRoomJoined) {
+      console.log('🔄 No chat room joined, starting new session');
+      await startNewSession();
+      // Wait a bit for session to be established
+      setTimeout(() => {
+        if (chatRoomJoined) {
+          sendMessageToSocket(message, messageType);
+        } else {
+          console.error('❌ Still not joined to chat room');
+          Alert.alert('Error', 'Unable to join chat room. Please try again.');
+        }
+      }, 1000);
+      return;
+    }
+
+    sendMessageToSocket(message, messageType);
+  };
+
+  const sendMessageToSocket = (message: string, messageType = 'text') => {
+    if (!socketRef.current || !socketConnected || !chatRoomJoined) {
+      console.error('❌ Socket not ready:', {
+        socket: !!socketRef.current,
+        connected: socketConnected,
+        joined: chatRoomJoined,
+      });
+      return;
+    }
+
+    try {
+      // Get persona data for context
+      AsyncStorage.getItem('personaData').then((personaDataRaw) => {
+        let personaContext = '';
+
+        if (personaDataRaw) {
+          const personaData = JSON.parse(personaDataRaw);
+          if (personaData.full_analysis) {
+            personaContext = personaData.full_analysis;
+          }
+        }
+
+        const messageData = {
+          message,
+          messageType,
+          personaContext,
+          timestamp: new Date().toISOString(),
+        };
+
+        console.log('📝 Sending message to socket:', messageData);
+        socketRef.current?.emit('message', messageData);
+
+        // Add user message to chat
+        const userMessage: Message = {
+          id: Date.now().toString(),
+          text: message,
+          sender: 'user',
+          timestamp: new Date(),
+        };
+
+        setMessages((prev) => [...prev, userMessage]);
+        saveChatHistory([...messages, userMessage]);
+      });
+    } catch (error) {
+      console.error('❌ Error sending message:', error);
+      Alert.alert('Error', 'Failed to send message. Please try again.');
+    }
   };
 
   const sendMessage = async (text: string) => {
-    if (!text.trim()) return;
+    if (text.trim() && socketRef.current && socketConnected) {
+      console.log('📝 Sending message:', text);
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        text: text.trim(),
+        sender: 'user',
+        timestamp: new Date(),
+      };
+      const newMessages = [...messages, userMessage];
+      setMessages(newMessages);
+      saveChatHistory(newMessages);
+      setInputText('');
+      setIsTyping(true);
+      scrollViewRef.current?.scrollToEnd({ animated: true });
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: text.trim(),
-      sender: 'user',
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInputText('');
-    setIsTyping(true);
-    scrollViewRef.current?.scrollToEnd({ animated: true });
-
-    await messageToServer(text);
+      try {
+        await messageToServer(text.trim());
+      } catch (error) {
+        console.error('❌ Error sending message:', error);
+        setIsTyping(false);
+        const errorMessage: Message = {
+          id: Date.now().toString(),
+          text: 'Failed to send message. Please try again.',
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+        const finalMessages = [...newMessages, errorMessage];
+        setMessages(finalMessages);
+        saveChatHistory(finalMessages);
+      }
+    } else {
+      console.log('❌ Cannot send message:', {
+        hasText: !!text.trim(),
+        hasSocket: !!socketRef.current,
+        isConnected: socketConnected,
+      });
+    }
   };
 
   const handleQuickSuggestion = (suggestion: string) => {
@@ -427,7 +515,7 @@ export default function ChatScreen() {
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {quickSuggestions.map((suggestion, index) => (
                   <TouchableOpacity
-                    key={index}
+                    key={`suggestion-${index}-${suggestion.substring(0, 10)}`}
                     style={styles.suggestionButton}
                     onPress={() => handleQuickSuggestion(suggestion)}
                   >
@@ -437,6 +525,24 @@ export default function ChatScreen() {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
+              <TouchableOpacity
+                style={[styles.suggestionButton, { marginTop: 8 }]}
+                onPress={() => {
+                  console.log('🔍 Connection status:', {
+                    socketConnected,
+                    hasSocket: !!socketRef.current,
+                    sessionId: AsyncStorage.getItem('sessionId'),
+                  });
+                  Alert.alert(
+                    'Connection Status',
+                    `Socket: ${socketConnected ? 'Connected' : 'Disconnected'}`
+                  );
+                }}
+              >
+                <BlurView intensity={15} style={styles.suggestionBlur}>
+                  <Text style={styles.suggestionText}>Test Connection</Text>
+                </BlurView>
+              </TouchableOpacity>
             </View>
           )}
 

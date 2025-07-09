@@ -8,7 +8,6 @@ module.exports = {
   resolver: {
     ...config.resolver,
     extraNodeModules: {
-      url: path.resolve(__dirname, 'node_modules/url-polyfill/dist/index.js'),
       'socket.io-client': path.resolve(
         __dirname,
         'node_modules/socket.io-client/dist/socket.io.js'
@@ -27,19 +26,6 @@ module.exports = {
           filePath: path.resolve(
             __dirname,
             'node_modules/socket.io-client/dist/socket.io.js'
-          ),
-          type: 'sourceFile',
-        };
-      }
-      if (moduleName === 'url') {
-        console.log(
-          'Resolving url to:',
-          path.resolve(__dirname, 'node_modules/url-polyfill/dist/index.js')
-        );
-        return {
-          filePath: path.resolve(
-            __dirname,
-            'node_modules/url-polyfill/dist/index.js'
           ),
           type: 'sourceFile',
         };

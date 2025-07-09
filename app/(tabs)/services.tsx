@@ -6,172 +6,245 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
-  Image,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withDelay,
-  withRepeat,
-  withSequence,
-} from 'react-native-reanimated';
-import { MapPin, ShoppingBag, Briefcase, Heart, Car, Chrome as Home, Utensils, Sparkles, ChevronRight, Crown, Star, Calendar } from 'lucide-react-native';
+import {
+  Sparkles,
+  Star,
+  TrendingUp,
+  Users,
+  Calendar,
+  MapPin,
+  Phone,
+  Mail,
+  ArrowRight,
+  RefreshCw,
+} from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 interface Service {
-  id: string;
-  title: string;
-  subtitle: string;
-  icon: any;
-  color: string;
-  gradient: string[];
-  image: string;
-  premium: boolean;
-  category: string;
+  name: string;
+  description: string;
 }
 
-const luxuryServices: Service[] = [
-  {
-    id: '1',
-    title: 'Luxury Travel Planning',
-    subtitle: 'Bespoke experiences worldwide',
-    icon: MapPin,
-    color: '#FF6B6B',
-    gradient: ['#FF6B6B', '#FF8E8E'],
-    image: 'https://images.pexels.com/photos/2373201/pexels-photo-2373201.jpeg?auto=compress&cs=tinysrgb&w=800',
-    premium: true,
-    category: 'Travel',
-  },
-  {
-    id: '2',
-    title: 'Personal Shopping',
-    subtitle: 'Curated luxury fashion & lifestyle',
-    icon: ShoppingBag,
-    color: '#4ECDC4',
-    gradient: ['#4ECDC4', '#44A08D'],
-    image: 'https://images.pexels.com/photos/1536619/pexels-photo-1536619.jpeg?auto=compress&cs=tinysrgb&w=800',
-    premium: true,
-    category: 'Lifestyle',
-  },
-  {
-    id: '3',
-    title: 'Executive Assistance',
-    subtitle: 'Professional life management',
-    icon: Briefcase,
-    color: '#45B7D1',
-    gradient: ['#45B7D1', '#96C93D'],
-    image: 'https://images.pexels.com/photos/7688336/pexels-photo-7688336.jpeg?auto=compress&cs=tinysrgb&w=800',
-    premium: false,
-    category: 'Business',
-  },
-  {
-    id: '4',
-    title: 'Wellness & Fitness',
-    subtitle: 'Holistic health optimization',
-    icon: Heart,
-    color: '#96CEB4',
-    gradient: ['#96CEB4', '#FFECD2'],
-    image: 'https://images.pexels.com/photos/3757942/pexels-photo-3757942.jpeg?auto=compress&cs=tinysrgb&w=800',
-    premium: true,
-    category: 'Health',
-  },
-  {
-    id: '5',
-    title: 'Luxury Transportation',
-    subtitle: 'Premium mobility solutions',
-    icon: Car,
-    color: '#A8E6CF',
-    gradient: ['#A8E6CF', '#DCEDC8'],
-    image: 'https://images.pexels.com/photos/100656/pexels-photo-100656.jpeg?auto=compress&cs=tinysrgb&w=800',
-    premium: true,
-    category: 'Transport',
-  },
-  {
-    id: '6',
-    title: 'Home Management',
-    subtitle: 'Residence optimization & care',
-    icon: Home,
-    color: '#FFD93D',
-    gradient: ['#FFD93D', '#FF6B6B'],
-    image: 'https://images.pexels.com/photos/1643383/pexels-photo-1643383.jpeg?auto=compress&cs=tinysrgb&w=800',
-    premium: false,
-    category: 'Home',
-  },
-  {
-    id: '7',
-    title: 'Fine Dining & Events',
-    subtitle: 'Exclusive culinary experiences',
-    icon: Utensils,
-    color: '#FF8A80',
-    gradient: ['#FF8A80', '#FFAB91'],
-    image: 'https://images.pexels.com/photos/696218/pexels-photo-696218.jpeg?auto=compress&cs=tinysrgb&w=800',
-    premium: true,
-    category: 'Dining',
-  },
-  {
-    id: '8',
-    title: 'Digital Life Optimization',
-    subtitle: 'Tech & data organization',
-    icon: Sparkles,
-    color: '#81C784',
-    gradient: ['#81C784', '#AED581'],
-    image: 'https://images.pexels.com/photos/159711/books-bookstore-book-reading-159711.jpeg?auto=compress&cs=tinysrgb&w=800',
-    premium: false,
-    category: 'Technology',
-  },
-];
-
-const categories = ['All', 'Travel', 'Lifestyle', 'Business', 'Health'];
+interface PersonaData {
+  title?: string;
+  sections?: Array<{
+    heading: string;
+    content: string;
+  }>;
+}
 
 export default function ServicesScreen() {
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [filteredServices, setFilteredServices] = useState(luxuryServices);
-
-  const headerOpacity = useSharedValue(0);
-  const cardsOpacity = useSharedValue(0);
-  const sparkleRotation = useSharedValue(0);
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [personaData, setPersonaData] = useState<PersonaData | null>(null);
 
   useEffect(() => {
-    headerOpacity.value = withDelay(200, withSpring(1));
-    cardsOpacity.value = withDelay(400, withSpring(1));
-    sparkleRotation.value = withRepeat(
-      withSequence(
-        withSpring(360, { duration: 8000 }),
-        withSpring(0, { duration: 8000 })
-      ),
-      -1
-    );
+    loadPersonaData();
+    fetchServices();
   }, []);
 
-  useEffect(() => {
-    if (selectedCategory === 'All') {
-      setFilteredServices(luxuryServices);
-    } else {
-      setFilteredServices(luxuryServices.filter(service => service.category === selectedCategory));
+  const loadPersonaData = async () => {
+    try {
+      const personaDataRaw = await AsyncStorage.getItem('personaData');
+      if (personaDataRaw) {
+        const data = JSON.parse(personaDataRaw);
+        setPersonaData(data);
+        console.log('✅ Loaded persona data for services:', data);
+      }
+    } catch (error) {
+      console.error('❌ Error loading persona data:', error);
     }
-  }, [selectedCategory]);
-
-  const headerAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: headerOpacity.value,
-  }));
-
-  const cardsAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: cardsOpacity.value,
-  }));
-
-  const sparkleAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${sparkleRotation.value}deg` }],
-  }));
-
-  const handleServiceSelect = (service: Service) => {
-    // Navigate to chat with service context
-    console.log('Selected service:', service.title);
   };
+
+  const fetchServices = async () => {
+    try {
+      setLoading(true);
+
+      // Get persona data
+      const personaDataRaw = await AsyncStorage.getItem('personaData');
+      if (!personaDataRaw) {
+        console.log('⚠️ No persona data available, showing default services');
+        setServices(getDefaultServices());
+        setLoading(false);
+        return;
+      }
+
+      const personaData = JSON.parse(personaDataRaw);
+
+      // Create full analysis string for API
+      let fullAnalysis = '';
+      if (personaData.full_analysis) {
+        fullAnalysis = personaData.full_analysis;
+      } else if (personaData.title) {
+        fullAnalysis += `# ${personaData.title}\n\n`;
+      }
+      if (personaData.sections) {
+        personaData.sections.forEach((section: any) => {
+          fullAnalysis += `## ${section.heading}\n${section.content}\n\n`;
+        });
+      }
+
+      console.log(
+        '📤 Sending persona analysis to services API:',
+        fullAnalysis.substring(0, 200) + '...'
+      );
+
+      // Use the correct API endpoint
+      try {
+        const response = await fetch(
+          'https://your-api-endpoint.com/api/suggest-services',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              personaAnalysis: fullAnalysis,
+            }),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ Received services from API:', data);
+          setServices(data);
+        } else {
+          console.log('⚠️ API not available, using personalized services');
+          const personalizedServices = getPersonalizedServices(personaData);
+          setServices(personalizedServices);
+        }
+      } catch (apiError) {
+        console.log('⚠️ API error, using personalized services:', apiError);
+        const personalizedServices = getPersonalizedServices(personaData);
+        setServices(personalizedServices);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching services:', error);
+      setServices(getDefaultServices());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getPersonalizedServices = (personaData: any): Service[] => {
+    // Generate personalized services based on persona data
+    const baseServices = getDefaultServices();
+
+    // Add personalized services based on persona analysis
+    if (personaData.full_analysis) {
+      const analysis = personaData.full_analysis.toLowerCase();
+
+      if (analysis.includes('tech') || analysis.includes('web3')) {
+        baseServices.push({
+          name: 'Tech Innovation Consulting',
+          description:
+            'Expert guidance on emerging technologies and digital transformation strategies.',
+        });
+      }
+
+      if (analysis.includes('lifestyle') || analysis.includes('fashion')) {
+        baseServices.push({
+          name: 'Luxury Lifestyle Management',
+          description:
+            'Comprehensive lifestyle services including personal styling and luxury experiences.',
+        });
+      }
+
+      if (analysis.includes('business') || analysis.includes('entrepreneur')) {
+        baseServices.push({
+          name: 'Business Strategy & Growth',
+          description:
+            'Strategic business consulting and growth acceleration services.',
+        });
+      }
+    }
+
+    return baseServices;
+  };
+
+  const getDefaultServices = (): Service[] => {
+    return [
+      {
+        name: 'Personal Styling Consultation',
+        description:
+          'Get personalized fashion advice and styling recommendations tailored to your lifestyle and preferences.',
+      },
+      {
+        name: 'Luxury Travel Planning',
+        description:
+          'Expert travel planning for premium experiences, including exclusive accommodations and unique experiences.',
+      },
+      {
+        name: 'Fine Dining Recommendations',
+        description:
+          'Curated restaurant suggestions and reservation services for the best dining experiences.',
+      },
+      {
+        name: 'Event Planning & Coordination',
+        description:
+          'Professional event planning services for special occasions, corporate events, and celebrations.',
+      },
+      {
+        name: 'Personal Shopping Service',
+        description:
+          'Handpicked shopping experiences with personal shoppers for clothing, accessories, and lifestyle items.',
+      },
+      {
+        name: 'Wellness & Spa Services',
+        description:
+          'Premium wellness experiences including spa treatments, fitness coaching, and relaxation services.',
+      },
+    ];
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchServices();
+    setRefreshing(false);
+  };
+
+  const handleServicePress = (service: Service) => {
+    Alert.alert(service.name, service.description, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Book Now',
+        onPress: () => console.log('Booking service:', service.name),
+      },
+    ]);
+  };
+
+  const renderServiceCard = (service: Service, index: number) => (
+    <TouchableOpacity
+      key={`service-${index}`}
+      style={styles.serviceCard}
+      onPress={() => handleServicePress(service)}
+    >
+      <LinearGradient
+        colors={['rgba(255, 215, 0, 0.1)', 'rgba(255, 165, 0, 0.05)']}
+        style={styles.serviceGradient}
+      >
+        <View style={styles.serviceHeader}>
+          <View style={styles.serviceIcon}>
+            <Sparkles size={24} color="#FFD700" />
+          </View>
+          <View style={styles.serviceInfo}>
+            <Text style={styles.serviceName}>{service.name}</Text>
+            <Text style={styles.serviceDescription}>{service.description}</Text>
+          </View>
+          <ArrowRight size={20} color="#FFD700" />
+        </View>
+      </LinearGradient>
+    </TouchableOpacity>
+  );
 
   return (
     <View style={styles.container}>
@@ -182,105 +255,94 @@ export default function ServicesScreen() {
 
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}
-        <Animated.View style={[styles.header, headerAnimatedStyle]}>
+        <View style={styles.header}>
           <View style={styles.headerContent}>
-            <View style={styles.titleContainer}>
-              <Text style={styles.title}>Luxury Services</Text>
-              <Animated.View style={sparkleAnimatedStyle}>
-                <Sparkles size={24} color="#FFD700" />
-              </Animated.View>
+            <View style={styles.headerIcon}>
+              <LinearGradient
+                colors={['#FFD700', '#FFA500']}
+                style={styles.iconGradient}
+              >
+                <Sparkles size={24} color="#0A0A0A" />
+              </LinearGradient>
             </View>
-            <Text style={styles.subtitle}>Curated experiences tailored for you</Text>
+            <View style={styles.headerText}>
+              <Text style={styles.headerTitle}>Personalized Services</Text>
+              <Text style={styles.headerSubtitle}>Curated just for you</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.refreshButton}
+              onPress={handleRefresh}
+              disabled={refreshing}
+            >
+              <RefreshCw
+                size={20}
+                color="#FFD700"
+                style={refreshing ? styles.rotating : undefined}
+              />
+            </TouchableOpacity>
           </View>
-        </Animated.View>
+        </View>
 
-        {/* Category Filter */}
-        <Animated.View style={[styles.categoriesContainer, cardsAnimatedStyle]}>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesContent}
-          >
-            {categories.map((category) => (
-              <TouchableOpacity
-                key={category}
-                style={[
-                  styles.categoryButton,
-                  selectedCategory === category && styles.selectedCategoryButton,
-                ]}
-                onPress={() => setSelectedCategory(category)}
-              >
-                <BlurView
-                  intensity={selectedCategory === category ? 25 : 15}
-                  style={[
-                    styles.categoryBlur,
-                    selectedCategory === category && styles.selectedCategoryBlur,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.categoryText,
-                      selectedCategory === category && styles.selectedCategoryText,
-                    ]}
-                  >
-                    {category}
-                  </Text>
-                </BlurView>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </Animated.View>
-
-        {/* Services Grid */}
+        {/* Content */}
         <ScrollView
-          style={styles.servicesContainer}
+          style={styles.content}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.servicesContent}
+          contentContainerStyle={styles.contentContainer}
         >
-          <Animated.View style={cardsAnimatedStyle}>
-            {filteredServices.map((service, index) => (
-              <TouchableOpacity
-                key={service.id}
-                style={styles.serviceCard}
-                onPress={() => handleServiceSelect(service)}
-              >
-                <View style={styles.serviceImageContainer}>
-                  <Image source={{ uri: service.image }} style={styles.serviceImage} />
-                  <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.8)']}
-                    style={styles.serviceImageOverlay}
-                  />
-                  {service.premium && (
-                    <View style={styles.premiumBadge}>
-                      <Crown size={12} color="#0A0A0A" />
-                    </View>
-                  )}
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#FFD700" />
+              <Text style={styles.loadingText}>
+                Loading personalized services...
+              </Text>
+            </View>
+          ) : (
+            <>
+              {/* Persona Summary */}
+              {personaData && (
+                <View style={styles.personaSection}>
+                  <BlurView intensity={15} style={styles.personaBlur}>
+                    <Text style={styles.personaTitle}>
+                      Based on Your Profile
+                    </Text>
+                    <Text style={styles.personaDescription}>
+                      These services are tailored to your preferences and
+                      lifestyle
+                    </Text>
+                  </BlurView>
                 </View>
+              )}
 
-                <BlurView intensity={20} style={styles.serviceContent}>
-                  <View style={styles.serviceInfo}>
-                    <View style={styles.serviceHeader}>
-                      <View style={[styles.serviceIcon, { backgroundColor: service.color }]}>
-                        <service.icon size={20} color="#FFFFFF" />
-                      </View>
-                      <View style={styles.serviceRating}>
-                        <Star size={12} color="#FFD700" fill="#FFD700" />
-                        <Text style={styles.ratingText}>4.9</Text>
-                      </View>
-                    </View>
-                    
-                    <Text style={styles.serviceTitle}>{service.title}</Text>
-                    <Text style={styles.serviceSubtitle}>{service.subtitle}</Text>
-                    
-                    <View style={styles.serviceFooter}>
-                      <Text style={styles.categoryTag}>{service.category}</Text>
-                      <ChevronRight size={16} color="#FFD700" />
-                    </View>
+              {/* Services Grid */}
+              <View style={styles.servicesGrid}>
+                {services.map((service, index) =>
+                  renderServiceCard(service, index)
+                )}
+              </View>
+
+              {/* Contact Section */}
+              <View style={styles.contactSection}>
+                <BlurView intensity={15} style={styles.contactBlur}>
+                  <Text style={styles.contactTitle}>
+                    Need Something Special?
+                  </Text>
+                  <Text style={styles.contactDescription}>
+                    Contact us for custom services and exclusive experiences
+                  </Text>
+                  <View style={styles.contactButtons}>
+                    <TouchableOpacity style={styles.contactButton}>
+                      <Phone size={16} color="#FFD700" />
+                      <Text style={styles.contactButtonText}>Call Us</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.contactButton}>
+                      <Mail size={16} color="#FFD700" />
+                      <Text style={styles.contactButtonText}>Email</Text>
+                    </TouchableOpacity>
                   </View>
                 </BlurView>
-              </TouchableOpacity>
-            ))}
-          </Animated.View>
+              </View>
+            </>
+          )}
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -303,160 +365,151 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 24,
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 215, 0, 0.2)',
   },
   headerContent: {
-    alignItems: 'center',
-  },
-  titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
   },
-  title: {
-    fontSize: 28,
-    fontFamily: 'Playfair-Bold',
-    color: '#FFFFFF',
+  headerIcon: {
     marginRight: 12,
   },
-  subtitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#CCCCCC',
-    textAlign: 'center',
-  },
-  categoriesContainer: {
-    paddingBottom: 24,
-  },
-  categoriesContent: {
-    paddingHorizontal: 24,
-  },
-  categoryButton: {
-    marginRight: 12,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  selectedCategoryButton: {
-    transform: [{ scale: 1.05 }],
-  },
-  categoryBlur: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  selectedCategoryBlur: {
-    backgroundColor: 'rgba(255, 215, 0, 0.2)',
-    borderColor: 'rgba(255, 215, 0, 0.4)',
-  },
-  categoryText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: '#CCCCCC',
-  },
-  selectedCategoryText: {
-    color: '#FFFFFF',
-  },
-  servicesContainer: {
-    flex: 1,
-  },
-  servicesContent: {
-    paddingHorizontal: 24,
-    paddingBottom: 100,
-  },
-  serviceCard: {
-    marginBottom: 24,
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  serviceImageContainer: {
-    position: 'relative',
-    height: 160,
-  },
-  serviceImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  serviceImageOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 80,
-  },
-  premiumBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#FFD700',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  serviceContent: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  serviceInfo: {
-    padding: 20,
-  },
-  serviceHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  serviceIcon: {
+  iconGradient: {
     width: 40,
     height: 40,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  serviceRating: {
+  headerText: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#CCCCCC',
+  },
+  refreshButton: {
+    padding: 8,
+  },
+  rotating: {
+    transform: [{ rotate: '360deg' }],
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    marginTop: 16,
+  },
+  personaSection: {
+    marginBottom: 24,
+  },
+  personaBlur: {
+    borderRadius: 16,
+    padding: 16,
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+  },
+  personaTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginBottom: 4,
+  },
+  personaDescription: {
+    fontSize: 14,
+    color: '#CCCCCC',
+  },
+  servicesGrid: {
+    gap: 16,
+  },
+  serviceCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  serviceGradient: {
+    padding: 16,
+  },
+  serviceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  ratingText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: '#FFD700',
-    marginLeft: 4,
+  serviceIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 215, 0, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
-  serviceTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
+  serviceInfo: {
+    flex: 1,
+  },
+  serviceName: {
+    fontSize: 16,
+    fontWeight: 'bold',
     color: '#FFFFFF',
     marginBottom: 4,
   },
-  serviceSubtitle: {
+  serviceDescription: {
     fontSize: 14,
-    fontFamily: 'Inter-Regular',
     color: '#CCCCCC',
-    marginBottom: 16,
     lineHeight: 20,
   },
-  serviceFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  contactSection: {
+    marginTop: 24,
   },
-  categoryTag: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: '#FFD700',
+  contactBlur: {
+    borderRadius: 16,
+    padding: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  contactTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  contactDescription: {
+    fontSize: 14,
+    color: '#CCCCCC',
+    marginBottom: 16,
+  },
+  contactButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  contactButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 8,
     backgroundColor: 'rgba(255, 215, 0, 0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.2)',
+    gap: 8,
+  },
+  contactButtonText: {
+    color: '#FFD700',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

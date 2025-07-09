@@ -6,262 +6,273 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
-  Image,
-  Switch,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withDelay,
-  withRepeat,
-  withSequence,
-} from 'react-native-reanimated';
-import { User, Settings, Bell, Shield, CreditCard, CircleHelp as HelpCircle, LogOut, Crown, Star, ChevronRight, CreditCard as Edit3, Sparkles, Award, Target } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import {
+  User,
+  Settings,
+  LogOut,
+  Edit3,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  Award,
+  Star,
+  Activity,
+  TrendingUp,
+  Shield,
+  ArrowRight,
+} from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from '../../hooks/firebaseConfig';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
-interface ProfileStat {
-  label: string;
-  value: string;
-  icon: any;
-  color: string;
+interface UserData {
+  email?: string;
+  displayName?: string;
+  photoURL?: string;
+  usernames?: {
+    instagram?: string;
+    twitter?: string;
+    linkedin?: string;
+  };
 }
 
-interface SettingItem {
-  id: string;
-  title: string;
-  subtitle?: string;
-  icon: any;
-  type: 'navigation' | 'toggle' | 'action';
-  value?: boolean;
-  onPress?: () => void;
+interface PersonaData {
+  title?: string;
+  sections?: Array<{
+    heading: string;
+    content: string;
+  }>;
 }
-
-const profileStats: ProfileStat[] = [
-  { label: 'Services Used', value: '47', icon: Sparkles, color: '#4ECDC4' },
-  { label: 'Satisfaction', value: '98%', icon: Star, color: '#FFD700' },
-  { label: 'Premium Days', value: '365', icon: Crown, color: '#FF6B6B' },
-  { label: 'AI Interactions', value: '1.2K', icon: Target, color: '#96CEB4' },
-];
 
 export default function ProfileScreen() {
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [premiumFeatures, setPremiumFeatures] = useState(true);
-
-  const headerOpacity = useSharedValue(0);
-  const cardsOpacity = useSharedValue(0);
-  const sparkleRotation = useSharedValue(0);
+  const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [personaData, setPersonaData] = useState<PersonaData | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
-    headerOpacity.value = withDelay(200, withSpring(1));
-    cardsOpacity.value = withDelay(400, withSpring(1));
-    sparkleRotation.value = withRepeat(
-      withSequence(
-        withSpring(360, { duration: 8000 }),
-        withSpring(0, { duration: 8000 })
-      ),
-      -1
-    );
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      if (u === null) {
+        router.replace('/sign-in');
+      } else {
+        await loadUserData();
+      }
+    });
+    return unsubscribe;
   }, []);
 
-  const headerAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: headerOpacity.value,
-  }));
+  const loadUserData = async () => {
+    try {
+      // Load user data from AsyncStorage
+      const userDataRaw = await AsyncStorage.getItem('userData');
+      const userDataParsed = userDataRaw ? JSON.parse(userDataRaw) : {};
+      setUserData(userDataParsed);
 
-  const cardsAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: cardsOpacity.value,
-  }));
+      // Load persona data
+      const personaDataRaw = await AsyncStorage.getItem('personaData');
+      const personaDataParsed = personaDataRaw
+        ? JSON.parse(personaDataRaw)
+        : null;
+      setPersonaData(personaDataParsed);
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    }
+  };
 
-  const sparkleAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${sparkleRotation.value}deg` }],
-  }));
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      await AsyncStorage.clear();
+      router.replace('/sign-in');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      Alert.alert('Error', 'Failed to sign out');
+    }
+  };
 
-  const settingsItems: SettingItem[] = [
-    {
-      id: '1',
-      title: 'Account Settings',
-      subtitle: 'Personal information and preferences',
-      icon: User,
-      type: 'navigation',
-      onPress: () => console.log('Account Settings'),
-    },
-    {
-      id: '2',
-      title: 'Notifications',
-      subtitle: 'Manage your notification preferences',
-      icon: Bell,
-      type: 'toggle',
-      value: notificationsEnabled,
-      onPress: () => setNotificationsEnabled(!notificationsEnabled),
-    },
-    {
-      id: '3',
-      title: 'Privacy & Security',
-      subtitle: 'Control your data and security settings',
-      icon: Shield,
-      type: 'navigation',
-      onPress: () => console.log('Privacy & Security'),
-    },
-    {
-      id: '4',
-      title: 'Payment Methods',
-      subtitle: 'Manage billing and payment options',
-      icon: CreditCard,
-      type: 'navigation',
-      onPress: () => console.log('Payment Methods'),
-    },
-    {
-      id: '5',
-      title: 'Premium Features',
-      subtitle: 'Access to exclusive luxury services',
-      icon: Crown,
-      type: 'toggle',
-      value: premiumFeatures,
-      onPress: () => setPremiumFeatures(!premiumFeatures),
-    },
-    {
-      id: '6',
-      title: 'Help & Support',
-      subtitle: '24/7 premium customer support',
-      icon: HelpCircle,
-      type: 'navigation',
-      onPress: () => console.log('Help & Support'),
-    },
-    {
-      id: '7',
-      title: 'Sign Out',
-      subtitle: 'Log out of your account',
-      icon: LogOut,
-      type: 'action',
-      onPress: () => console.log('Sign Out'),
-    },
-  ];
+  const handleEditProfile = () => {
+    setIsEditing(true);
+    // Navigate to edit profile screen or show modal
+    Alert.alert('Edit Profile', 'Profile editing feature coming soon!');
+  };
+
+  const getConnectedPlatforms = () => {
+    const platforms = [];
+    if (userData?.usernames?.instagram) platforms.push('Instagram');
+    if (userData?.usernames?.twitter) platforms.push('Twitter');
+    if (userData?.usernames?.linkedin) platforms.push('LinkedIn');
+    return platforms;
+  };
+
+  const getPersonaSummary = () => {
+    if (!personaData?.sections) return 'No persona data available';
+
+    const summary = personaData.sections
+      .map(
+        (section) =>
+          `${section.heading}: ${section.content.substring(0, 100)}...`
+      )
+      .join('\n\n');
+
+    return summary;
+  };
 
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#0A0A0A', '#1A1A1A', '#0A0A0A']}
-        style={styles.backgroundGradient}
+        colors={['#0A0A0A', '#1A1A1A']}
+        style={styles.background}
       />
-
       <SafeAreaView style={styles.safeArea}>
         <ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
         >
           {/* Header */}
-          <Animated.View style={[styles.header, headerAnimatedStyle]}>
-            <View style={styles.profileSection}>
-              <View style={styles.avatarContainer}>
-                <Image
-                  source={{ uri: 'https://images.pexels.com/photos/1704488/pexels-photo-1704488.jpeg?auto=compress&cs=tinysrgb&w=400' }}
-                  style={styles.avatar}
-                />
-                <TouchableOpacity style={styles.editButton}>
-                  <Edit3 size={16} color="#0A0A0A" />
-                </TouchableOpacity>
-              </View>
-              
-              <View style={styles.profileInfo}>
-                <Text style={styles.userName}>Alexander Sterling</Text>
-                <Text style={styles.userEmail}>alexander@example.com</Text>
-                
-                <View style={styles.membershipContainer}>
-                  <Crown size={16} color="#FFD700" />
-                  <Text style={styles.membershipText}>Premium Member</Text>
-                  <Animated.View style={sparkleAnimatedStyle}>
-                    <Sparkles size={14} color="#FFD700" />
-                  </Animated.View>
-                </View>
-              </View>
+          <View style={styles.header}>
+            <View style={styles.profileImageContainer}>
+              <LinearGradient
+                colors={['#FFD700', '#FFA500']}
+                style={styles.profileImage}
+              >
+                <User size={40} color="#0A0A0A" />
+              </LinearGradient>
             </View>
-          </Animated.View>
-
-          {/* Stats */}
-          <Animated.View style={[styles.statsSection, cardsAnimatedStyle]}>
-            <Text style={styles.sectionTitle}>Your Activity</Text>
-            <View style={styles.statsGrid}>
-              {profileStats.map((stat, index) => (
-                <TouchableOpacity key={index} style={styles.statCard}>
-                  <BlurView intensity={15} style={styles.statBlur}>
-                    <View style={[styles.statIcon, { backgroundColor: stat.color }]}>
-                      <stat.icon size={20} color="#FFFFFF" />
-                    </View>
-                    <Text style={styles.statValue}>{stat.value}</Text>
-                    <Text style={styles.statLabel}>{stat.label}</Text>
-                  </BlurView>
-                </TouchableOpacity>
-              ))}
+            <View style={styles.profileInfo}>
+              <Text style={styles.name}>
+                {userData?.displayName || user?.displayName || 'User'}
+              </Text>
+              <Text style={styles.email}>{user?.email}</Text>
+              <Text style={styles.memberSince}>
+                Member since {new Date().getFullYear()}
+              </Text>
             </View>
-          </Animated.View>
-
-          {/* Achievement Section */}
-          <Animated.View style={[styles.achievementSection, cardsAnimatedStyle]}>
-            <TouchableOpacity style={styles.achievementCard}>
-              <BlurView intensity={20} style={styles.achievementBlur}>
-                <View style={styles.achievementContent}>
-                  <View style={styles.achievementIcon}>
-                    <Award size={24} color="#FFD700" />
-                  </View>
-                  <View style={styles.achievementText}>
-                    <Text style={styles.achievementTitle}>Elite Status Achieved</Text>
-                    <Text style={styles.achievementSubtitle}>
-                      Unlock exclusive experiences and priority service
-                    </Text>
-                  </View>
-                  <ChevronRight size={20} color="#FFD700" />
-                </View>
-              </BlurView>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={handleEditProfile}
+            >
+              <Edit3 size={20} color="#FFD700" />
             </TouchableOpacity>
-          </Animated.View>
+          </View>
+
+          {/* Stats Cards */}
+          <View style={styles.statsContainer}>
+            <BlurView intensity={15} style={styles.statCard}>
+              <Activity size={24} color="#FFD700" />
+              <Text style={styles.statValue}>
+                {getConnectedPlatforms().length}
+              </Text>
+              <Text style={styles.statLabel}>Connected Platforms</Text>
+            </BlurView>
+            <BlurView intensity={15} style={styles.statCard}>
+              <TrendingUp size={24} color="#FFD700" />
+              <Text style={styles.statValue}>85%</Text>
+              <Text style={styles.statLabel}>Profile Complete</Text>
+            </BlurView>
+            <BlurView intensity={15} style={styles.statCard}>
+              <Star size={24} color="#FFD700" />
+              <Text style={styles.statValue}>Gold</Text>
+              <Text style={styles.statLabel}>Membership</Text>
+            </BlurView>
+          </View>
+
+          {/* Connected Platforms */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Connected Platforms</Text>
+            <View style={styles.platformsContainer}>
+              {getConnectedPlatforms().map((platform, index) => (
+                <BlurView
+                  key={index}
+                  intensity={15}
+                  style={styles.platformCard}
+                >
+                  <Text style={styles.platformName}>{platform}</Text>
+                  <Text style={styles.platformStatus}>Connected</Text>
+                </BlurView>
+              ))}
+              {getConnectedPlatforms().length === 0 && (
+                <Text style={styles.noPlatforms}>
+                  No platforms connected yet. Complete onboarding to connect
+                  your social media accounts.
+                </Text>
+              )}
+            </View>
+          </View>
+
+          {/* Persona Summary */}
+          {personaData && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Persona Summary</Text>
+              <BlurView intensity={15} style={styles.personaCard}>
+                <Text style={styles.personaTitle}>
+                  {personaData.title || 'Your Personal Concierge Profile'}
+                </Text>
+                <Text style={styles.personaContent}>{getPersonaSummary()}</Text>
+                <TouchableOpacity
+                  style={styles.viewFullButton}
+                  onPress={() => router.push('/persona')}
+                >
+                  <Text style={styles.viewFullButtonText}>
+                    View Full Analysis
+                  </Text>
+                </TouchableOpacity>
+              </BlurView>
+            </View>
+          )}
 
           {/* Settings */}
-          <Animated.View style={[styles.settingsSection, cardsAnimatedStyle]}>
+          <View style={styles.section}>
             <Text style={styles.sectionTitle}>Settings</Text>
-            
-            {settingsItems.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.settingItem}
-                onPress={item.onPress}
-                disabled={item.type === 'toggle'}
-              >
-                <BlurView intensity={15} style={styles.settingBlur}>
-                  <View style={styles.settingContent}>
-                    <View style={styles.settingLeft}>
-                      <View style={styles.settingIconContainer}>
-                        <item.icon size={20} color="#FFD700" />
-                      </View>
-                      <View style={styles.settingText}>
-                        <Text style={styles.settingTitle}>{item.title}</Text>
-                        {item.subtitle && (
-                          <Text style={styles.settingSubtitle}>{item.subtitle}</Text>
-                        )}
-                      </View>
-                    </View>
-                    
-                    <View style={styles.settingRight}>
-                      {item.type === 'toggle' ? (
-                        <Switch
-                          value={item.value}
-                          onValueChange={item.onPress}
-                          trackColor={{ false: '#333333', true: '#FFD700' }}
-                          thumbColor={item.value ? '#FFFFFF' : '#CCCCCC'}
-                        />
-                      ) : (
-                        <ChevronRight size={16} color="#666666" />
-                      )}
-                    </View>
-                  </View>
-                </BlurView>
+            <View style={styles.settingsContainer}>
+              <TouchableOpacity style={styles.settingItem}>
+                <Settings size={20} color="#FFD700" />
+                <Text style={styles.settingText}>Preferences</Text>
               </TouchableOpacity>
-            ))}
-          </Animated.View>
+              <TouchableOpacity style={styles.settingItem}>
+                <Mail size={20} color="#FFD700" />
+                <Text style={styles.settingText}>Notifications</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.settingItem}>
+                <Award size={20} color="#FFD700" />
+                <Text style={styles.settingText}>Membership</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Admin Dashboard */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/backend-dashboard')}
+          >
+            <View style={styles.menuIcon}>
+              <Shield size={24} color="#FFD700" />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>Admin Dashboard</Text>
+              <Text style={styles.menuSubtitle}>System management</Text>
+            </View>
+            <ArrowRight size={20} color="#CCCCCC" />
+          </TouchableOpacity>
+
+          {/* Sign Out */}
+          <TouchableOpacity
+            style={styles.signOutButton}
+            onPress={handleSignOut}
+          >
+            <LogOut size={20} color="#FF6B6B" />
+            <Text style={styles.signOutText}>Sign Out</Text>
+          </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -273,7 +284,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0A0A0A',
   },
-  backgroundGradient: {
+  background: {
     position: 'absolute',
     left: 0,
     right: 0,
@@ -286,110 +297,63 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  scrollContent: {
-    paddingBottom: 100,
-  },
   header: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 32,
-  },
-  profileSection: {
+    flexDirection: 'row',
     alignItems: 'center',
+    padding: 24,
+    paddingBottom: 16,
   },
-  avatarContainer: {
-    position: 'relative',
-    marginBottom: 16,
+  profileImageContainer: {
+    marginRight: 16,
   },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 3,
-    borderColor: '#FFD700',
-  },
-  editButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FFD700',
+  profileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
   profileInfo: {
-    alignItems: 'center',
+    flex: 1,
   },
-  userName: {
+  name: {
     fontSize: 24,
     fontFamily: 'Playfair-Bold',
     color: '#FFFFFF',
     marginBottom: 4,
   },
-  userEmail: {
-    fontSize: 14,
+  email: {
+    fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: '#CCCCCC',
-    marginBottom: 12,
+    marginBottom: 4,
   },
-  membershipContainer: {
+  memberSince: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#666666',
+  },
+  editButton: {
+    padding: 8,
+  },
+  statsContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 215, 0, 0.1)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.3)',
-  },
-  membershipText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: '#FFD700',
-    marginHorizontal: 8,
-  },
-  statsSection: {
     paddingHorizontal: 24,
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: '#FFFFFF',
-    marginBottom: 16,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    marginBottom: 24,
   },
   statCard: {
-    width: (width - 56) / 2,
-    marginBottom: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  statBlur: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    padding: 20,
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    padding: 16,
     alignItems: 'center',
-  },
-  statIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
+    marginHorizontal: 4,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 18,
     fontFamily: 'Inter-Bold',
-    color: '#FFFFFF',
+    color: '#FFD700',
+    marginTop: 8,
     marginBottom: 4,
   },
   statLabel: {
@@ -398,95 +362,134 @@ const styles = StyleSheet.create({
     color: '#CCCCCC',
     textAlign: 'center',
   },
-  achievementSection: {
+  section: {
     paddingHorizontal: 24,
-    marginBottom: 32,
+    marginBottom: 24,
   },
-  achievementCard: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.3)',
-  },
-  achievementBlur: {
-    backgroundColor: 'rgba(255, 215, 0, 0.1)',
-  },
-  achievementContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-  },
-  achievementIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 215, 0, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  achievementText: {
-    flex: 1,
-  },
-  achievementTitle: {
-    fontSize: 16,
+  sectionTitle: {
+    fontSize: 18,
     fontFamily: 'Inter-SemiBold',
     color: '#FFFFFF',
-    marginBottom: 4,
+    marginBottom: 16,
   },
-  achievementSubtitle: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#CCCCCC',
+  platformsContainer: {
+    gap: 12,
   },
-  settingsSection: {
-    paddingHorizontal: 24,
-  },
-  settingItem: {
-    marginBottom: 12,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  settingBlur: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  settingContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  platformCard: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
     padding: 16,
-  },
-  settingLeft: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    flex: 1,
   },
-  settingIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 215, 0, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  settingText: {
-    flex: 1,
-  },
-  settingTitle: {
+  platformName: {
     fontSize: 16,
     fontFamily: 'Inter-Medium',
     color: '#FFFFFF',
-    marginBottom: 2,
   },
-  settingSubtitle: {
-    fontSize: 12,
+  platformStatus: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#00FF88',
+  },
+  noPlatforms: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#666666',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  personaCard: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    padding: 16,
+  },
+  personaTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#FFD700',
+    marginBottom: 8,
+  },
+  personaContent: {
+    fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#CCCCCC',
+    lineHeight: 20,
+    marginBottom: 16,
   },
-  settingRight: {
-    marginLeft: 16,
+  viewFullButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(255,215,0,0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  viewFullButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#FFD700',
+  },
+  settingsContainer: {
+    gap: 12,
+  },
+  settingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    padding: 16,
+  },
+  settingText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#FFFFFF',
+    marginLeft: 12,
+  },
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,107,107,0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 24,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#FF6B6B',
+  },
+  signOutText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#FF6B6B',
+    marginLeft: 8,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    marginHorizontal: 24,
+    marginBottom: 16,
+  },
+  menuIcon: {
+    marginRight: 16,
+  },
+  menuContent: {
+    flex: 1,
+  },
+  menuTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  menuSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#CCCCCC',
   },
 });
