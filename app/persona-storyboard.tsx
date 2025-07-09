@@ -82,18 +82,23 @@ export default function PersonaStoryboardScreen() {
         setPersonaData(parsed);
 
         // Convert the new API response structure to slides
-        if (parsed.sections && Array.isArray(parsed.sections)) {
+        if (parsed.slides) {
+          const slidesData = parsed.slides;
           const icons = [User, Heart, Star, ShoppingBag, Target];
-          const processedSlides = parsed.sections.map(
-            (section: any, index: number) => ({
-              title: section.heading || 'Slide Title',
-              content: section.content || 'Slide content',
+          const processedSlides = Object.keys(slidesData).map((key, index) => {
+            const slide = slidesData[key];
+            return {
+              title: slide.title || 'Untitled',
+              content: slide.points
+                ? slide.points.join('\n\n')
+                : 'No content available.',
               image: `https://picsum.photos/400/300?random=${index}`,
               icon: icons[index % icons.length],
-            })
-          ) as Slide[];
+            };
+          });
 
           setSlides(processedSlides);
+          console.log('✅ Loaded slides from parsed.slides:', processedSlides);
         } else {
           // Fallback for old structure
           console.log('⚠️ Using fallback persona structure');

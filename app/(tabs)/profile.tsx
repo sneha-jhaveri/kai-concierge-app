@@ -47,10 +47,14 @@ interface UserData {
 
 interface PersonaData {
   title?: string;
-  sections?: Array<{
-    heading: string;
-    content: string;
-  }>;
+  summary?: {
+    key_insights: string[];
+    demographics: string;
+    personality: string;
+    interests: string;
+    shopping: string;
+    recommendations: string;
+  };
 }
 
 export default function ProfileScreen() {
@@ -116,16 +120,25 @@ export default function ProfileScreen() {
   };
 
   const getPersonaSummary = () => {
-    if (!personaData?.sections) return 'No persona data available';
+    if (!personaData?.summary) return 'No persona summary available';
 
-    const summary = personaData.sections
-      .map(
-        (section) =>
-          `${section.heading}: ${section.content.substring(0, 100)}...`
-      )
-      .join('\n\n');
+    const {
+      key_insights,
+      demographics,
+      personality,
+      interests,
+      shopping,
+      recommendations,
+    } = personaData.summary;
 
-    return summary;
+    return (
+      `Key Insights:\n- ${key_insights.join('\n- ')}\n\n` +
+      `Demographics: ${demographics}\n\n` +
+      `Personality: ${personality}\n\n` +
+      `Interests: ${interests}\n\n` +
+      `Shopping: ${shopping}\n\n` +
+      `Recommendations: ${recommendations}`
+    );
   };
 
   return (

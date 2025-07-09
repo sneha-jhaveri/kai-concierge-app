@@ -28,6 +28,7 @@ import {
   Zap,
   Link,
   User,
+  ArrowLeft,
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -327,12 +328,19 @@ export default function BackendDashboardScreen() {
           <View style={styles.header}>
             <View style={styles.headerContent}>
               <View style={styles.headerLeft}>
-                <Shield size={32} color="#FFD700" />
+                <TouchableOpacity
+                  onPress={() => router.back()}
+                  style={styles.backButton}
+                >
+                  <ArrowLeft size={24} color="#FFD700" />
+                </TouchableOpacity>
+                <Shield size={32} color="#FFD700" style={{ marginLeft: 12 }} />
                 <View style={styles.headerText}>
                   <Text style={styles.headerTitle}>Admin Dashboard</Text>
                   <Text style={styles.headerSubtitle}>System Management</Text>
                 </View>
               </View>
+
               <TouchableOpacity
                 style={styles.logoutButton}
                 onPress={handleLogout}
@@ -503,6 +511,9 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  backButton: {
+    padding: 8,
   },
   headerText: {
     marginLeft: 12,
