@@ -131,7 +131,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="services"
         options={{
-          title: 'Services',
+          title: 'Predictive',
           tabBarIcon: ({ color, size }) => (
             <AnimatedTabBarIcon
               name="services"

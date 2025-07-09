@@ -285,7 +285,7 @@ export default function BackendDashboardScreen() {
             onPress={() => Alert.alert('Info', 'Message Analytics')}
           >
             <MessageCircle size={24} color="#FFD700" />
-            <Text style={styles.actionText}>Messages</Text>
+            <Text style={styles.actionText}>Requests</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
