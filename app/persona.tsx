@@ -65,8 +65,6 @@ export default function PersonaAnalysisScreen() {
   const [inlineEditing, setInlineEditing] = useState<Platform | null>(null);
   const [inlineEditData, setInlineEditData] = useState<any>(null);
 
-  const tabScale = useSharedValue(1);
-  const contentOpacity = useSharedValue(0);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {

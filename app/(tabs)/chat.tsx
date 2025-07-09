@@ -35,11 +35,7 @@ interface Message {
 }
 
 interface PersonaData {
-  title?: string;
-  sections?: Array<{
-    heading: string;
-    content: string;
-  }>;
+  full_analysis?: string;
 }
 
 const initialMessages: Message[] = [
@@ -75,6 +71,13 @@ export default function ChatScreen() {
   const userId = '6840034f42525d41443ba548';
   const userType = 'CUSTOMER';
   const applicationUrl = 'https://uatapi.botwot.io';
+
+  // ✅ NEW EFFECT TO JOIN CHAT ROOM
+  useEffect(() => {
+    if (socketConnected && !chatRoomJoined) {
+      joinChatRoom();
+    }
+  }, [socketConnected, chatRoomJoined]);
 
   useEffect(() => {
     sparkleRotation.value = withRepeat(
@@ -125,12 +128,11 @@ export default function ChatScreen() {
       const chatHistoryRaw = await AsyncStorage.getItem('chatHistory');
       if (chatHistoryRaw) {
         const chatHistory = JSON.parse(chatHistoryRaw);
-        // Convert stored timestamps back to Date objects
         const parsedMessages = chatHistory.map((msg: any) => ({
           ...msg,
           timestamp: new Date(msg.timestamp),
         }));
-        setMessages((prev) => [...initialMessages, ...parsedMessages]);
+        setMessages([...initialMessages, ...parsedMessages]);
       }
     } catch (error) {
       console.error('Error loading chat history:', error);
@@ -139,7 +141,6 @@ export default function ChatScreen() {
 
   const saveChatHistory = async (newMessages: Message[]) => {
     try {
-      // Convert Date objects to strings for storage
       const messagesForStorage = newMessages.map((msg) => ({
         ...msg,
         timestamp: msg.timestamp.toISOString(),
@@ -168,10 +169,7 @@ export default function ChatScreen() {
 
       socketRef.current.on('connect', () => {
         console.log('✅ Socket connected successfully');
-        setSocketConnected(true);
-
-        // Join chat room immediately after connection
-        joinChatRoom();
+        setSocketConnected(true); // Do not call hooks or side effects here
       });
 
       socketRef.current.on('connect_error', (error: any) => {
@@ -198,8 +196,11 @@ export default function ChatScreen() {
             sender: 'ai',
             timestamp: new Date(),
           };
-          setMessages((prev) => [...prev, botMessage]);
-          saveChatHistory([...messages, botMessage]);
+          setMessages((prev) => {
+            const updated = [...prev, botMessage];
+            saveChatHistory(updated);
+            return updated;
+          });
           setIsTyping(false);
           scrollViewRef.current?.scrollToEnd({ animated: true });
         }
@@ -232,9 +233,7 @@ export default function ChatScreen() {
         startNewSession();
       }
     } else {
-      console.log(
-        '❌ Socket not ready for joining chat room, will retry when connected'
-      );
+      console.log('❌ Socket not ready to join chat room yet');
     }
   };
 
@@ -242,22 +241,26 @@ export default function ChatScreen() {
     if (socketRef.current && socketConnected) {
       try {
         const sessionData = {
-          botId: '684006e942525d41443ba708',
-          userId: '6840034f42525d41443ba548',
-          userType: 'CUSTOMER',
+          botId,
+          userId,
+          userType,
         };
 
         console.log('🆕 Starting new session with:', sessionData);
 
-        socketRef.current.emit('startSession', sessionData, (response: any) => {
-          if (response && response.sessionId) {
-            console.log('✅ Session created with ID:', response.sessionId);
-            AsyncStorage.setItem('sessionId', response.sessionId);
-            setChatRoomJoined(true);
-          } else {
-            console.error('❌ Failed to create session:', response);
+        socketRef.current.emit(
+          'startSession',
+          sessionData,
+          async (response: any) => {
+            if (response?.sessionId) {
+              console.log('✅ Session created with ID:', response.sessionId);
+              await AsyncStorage.setItem('sessionId', response.sessionId);
+              setChatRoomJoined(true);
+            } else {
+              console.error('❌ Failed to create session:', response);
+            }
           }
-        });
+        );
       } catch (error) {
         console.error('❌ Error starting new session:', error);
       }
@@ -302,38 +305,31 @@ export default function ChatScreen() {
     }
 
     try {
-      // Get persona data for context
-      AsyncStorage.getItem('personaData').then((personaDataRaw) => {
-        let personaContext = '';
+      // ✅ Use already-loaded personaData
+      let personaContext = '';
+      if (personaData?.full_analysis) {
+        personaContext = personaData.full_analysis;
+      }
 
-        if (personaDataRaw) {
-          const personaData = JSON.parse(personaDataRaw);
-          if (personaData.full_analysis) {
-            personaContext = personaData.full_analysis;
-          }
-        }
+      const messageData = {
+        message,
+        messageType,
+        personaContext,
+        timestamp: new Date().toISOString(),
+      };
 
-        const messageData = {
-          message,
-          messageType,
-          personaContext,
-          timestamp: new Date().toISOString(),
-        };
+      console.log('📝 Sending message to socket:', messageData);
+      socketRef.current?.emit('message', messageData);
 
-        console.log('📝 Sending message to socket:', messageData);
-        socketRef.current?.emit('message', messageData);
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        text: message,
+        sender: 'user',
+        timestamp: new Date(),
+      };
 
-        // Add user message to chat
-        const userMessage: Message = {
-          id: Date.now().toString(),
-          text: message,
-          sender: 'user',
-          timestamp: new Date(),
-        };
-
-        setMessages((prev) => [...prev, userMessage]);
-        saveChatHistory([...messages, userMessage]);
-      });
+      setMessages((prev) => [...prev, userMessage]);
+      saveChatHistory([...messages, userMessage]);
     } catch (error) {
       console.error('❌ Error sending message:', error);
       Alert.alert('Error', 'Failed to send message. Please try again.');
